@@ -36,7 +36,9 @@ body{background:var(--sea);color:var(--ink);font-family:var(--f-body);font-size:
 .brand{font-family:var(--f-display);font-size:15px;letter-spacing:.02em;color:var(--muted);display:flex;gap:8px;align-items:center}
 .brand b{color:var(--accent);font-weight:400}
 .round{font-family:var(--f-num);font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
-.round.grade{font-family:var(--f-display);font-size:18px;color:var(--ink)}
+.round.dist{font-size:15px;color:var(--ink)}
+.round.dist b{font-weight:600}
+.rows li.sum{border-bottom:0;font-weight:700}
 .target{grid-column:1/-1;font-family:var(--f-display);font-size:clamp(28px,7vw,40px);line-height:1.05;min-height:1.05em;text-wrap:balance}
 .target small{font-family:var(--f-body);font-weight:700;font-size:.5em;color:var(--muted);margin-right:.35em;vertical-align:.18em}
 .target .of{font-family:var(--f-num);font-size:.45em;color:var(--muted);margin-left:.3em}
@@ -56,8 +58,6 @@ svg{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;user
 .link{stroke-width:1.6px;stroke-dasharray:4 4;vector-effect:non-scaling-stroke;fill:none;stroke:var(--ink)}
 .link.g{stroke:var(--hit)} .link.m{stroke:var(--mid)} .link.b{stroke:var(--accent)}
 .lbl{font-family:var(--f-body);font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-linejoin:round;text-anchor:middle;dominant-baseline:central;pointer-events:none}
-.lbl .s{font-family:var(--f-num);font-weight:600}
-.lbl .s.g{fill:var(--hit)} .lbl .s.m{fill:var(--mid)} .lbl .s.b{fill:var(--accent)}
 
 .zoom{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;display:flex;flex-direction:column;gap:6px}
 .zoom button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 18px var(--f-num);box-shadow:var(--shadow);cursor:pointer}
@@ -187,10 +187,9 @@ const MODES = [
 const mctx = document.createElement("canvas").getContext("2d");
 const bodyFont = getComputedStyle(document.documentElement).getPropertyValue("--f-body");
 const numFont = getComputedStyle(document.documentElement).getPropertyValue("--f-num");
-function measure(name, score, fs) {
-  mctx.font = `700 ${fs}px ${bodyFont}`; const a = mctx.measureText(name + " ").width;
-  mctx.font = `600 ${fs}px ${numFont}`; const b = mctx.measureText(String(score)).width;
-  return { a, b, w: a + b };
+function measure(name, fs) {
+  mctx.font = `700 ${fs}px ${bodyFont}`;
+  return mctx.measureText(name).width;
 }
 // items: {x, y, w} in pixels; pins: {x, y, r}. Returns a center per item, avoiding pins and earlier labels.
 function placeLabels(items, pins, fs) {
@@ -198,7 +197,7 @@ function placeLabels(items, pins, fs) {
   const ov = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
   return items.map(it => {
     const sx = it.w / 2 + fs * 0.6;
-    const cands = [[0, 0], [0, -h], [0, h], [sx, 0], [-sx, 0], [sx, -h], [-sx, -h], [sx, h], [-sx, h], [0, -2 * h], [0, 2 * h], [sx, -2 * h], [-sx, 2 * h]];
+    const cands = [[0, -h], [0, h], [sx, 0], [-sx, 0], [sx, -h], [-sx, -h], [sx, h], [-sx, h], [0, -2 * h], [0, 2 * h], [sx, -2 * h], [-sx, 2 * h]];
     let best = null, bs = Infinity;
     for (const [dx, dy] of cands) {
       const x = it.x + dx, y = it.y + dy;
@@ -292,7 +291,8 @@ function pick(pool, n, rand) {
   return a.slice(0, n);
 }
 const total = () => Math.round(results.reduce((s, r) => s + r.score, 0) / ROUNDS);
-const gradeOf = t => t >= 90 ? "걸어 다니는 지도" : t >= 75 ? "국토 박사" : t >= 55 ? "꽤 아시네요" : t >= 35 ? "어디서 들어본 곳들" : "여행이 필요해요";
+const sumKm = () => results.reduce((s, r) => s + r.km, 0);
+const fmtSum = () => Math.round(sumKm()).toLocaleString("ko-KR") + "km";
 
 const $ = id => document.getElementById(id);
 const action = $("action");
@@ -377,16 +377,15 @@ function drawMarks() {
   if (!shown.length) return;
   const fs = 13;
   const items = shown.map(r => {
-    const [cx, cy] = t.apply(path.centroid(r.f)), m = measure(label(r.f).name, r.score, fs);
-    return { x: cx, y: cy, w: m.w, m, r };
+    const [x, y] = t.apply(proj(r.guess));
+    return { x, y, w: measure(label(r.f).name, fs), r };
   });
   const spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y, r: 8 }; }), fs);
   items.forEach((it, i) => {
     const [x, y] = t.invert([spots[i].x, spots[i].y]);
     const txt = gMarks.append("text").attr("class", "lbl").attr("x", x).attr("y", y)
       .attr("font-size", fs / k).attr("stroke-width", 4 / k);
-    txt.append("tspan").text(label(it.r.f).name + " ");
-    txt.append("tspan").attr("class", "s " + bucket(it.r.score)).text(it.r.score);
+    txt.text(label(it.r.f).name);
   });
 }
 
@@ -409,13 +408,13 @@ function finish() {
   phase = "done";
   const tt = total();
   $("target").innerHTML = `${tt}<span class="of">/ 100</span>`;
-  $("round").textContent = gradeOf(tt); $("round").className = "round grade";
+  $("round").innerHTML = `총 오차 <b>${fmtSum()}</b>`; $("round").className = "round dist";
   $("playRow").hidden = true; $("endRow").hidden = false;
   renderPips(); paintRegions(); drawMarks(); fitResults();
   $("rows").innerHTML = results.map(r => {
     const l = label(r.f);
     return `<li><span class="nm">${l.pre ? `<small>${l.pre}</small>` : ""}${l.name}</span><span class="km">${fmtKm(r.km)}</span><span class="p ${bucket(r.score)}">${r.score}</span></li>`;
-  }).join("");
+  }).join("") + `<li class="sum"><span class="nm">합계</span><span class="km">${fmtSum()}</span><span class="p">${tt}</span></li>`;
   if (mode.daily) { try { localStorage.setItem("eodige-daily-" + today(), String(tt)); } catch (e) {} }
 }
 
@@ -435,7 +434,7 @@ $("shareClose").onclick = () => { $("shareOv").hidden = true; };
 // ---------- share image ----------
 let shotBlob = null;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const shareText = () => `어디게 · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100\n` +
+const shareText = () => `어디게 · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100 · 총 오차 ${fmtSum()}\n` +
   results.map(r => ({ g: "🟩", m: "🟨", b: "🟥" })[bucket(r.score)]).join("") + (location.protocol.startsWith("http") ? "\n" + location.href.split("#")[0] : "");
 
 async function makeImage() {
@@ -459,7 +458,11 @@ async function makeImage() {
   ctx.font = `600 132px ${numFont}`; ctx.fillStyle = col.ink; ctx.fillText(String(tt), 52, 250);
   const w2 = ctx.measureText(String(tt)).width;
   ctx.font = `500 40px ${numFont}`; ctx.fillStyle = col.muted; ctx.fillText("/ 100", 52 + w2 + 14, 250);
-  ctx.font = `46px ${disp}`; ctx.fillStyle = col.ink; ctx.textAlign = "right"; ctx.fillText(gradeOf(tt), CW - 60, 246); ctx.textAlign = "left";
+  ctx.textAlign = "right";
+  ctx.font = `600 44px ${numFont}`; ctx.fillStyle = col.ink; ctx.fillText(fmtSum(), CW - 60, 250);
+  const w3 = ctx.measureText(fmtSum()).width;
+  ctx.font = `700 28px ${bodyFont}`; ctx.fillStyle = col.muted; ctx.fillText("총 오차", CW - 60 - w3 - 14, 248);
+  ctx.textAlign = "left";
 
   // map
   const mx = 40, my = 290, mw = CW - 80, mh = 900;
@@ -487,15 +490,13 @@ async function makeImage() {
     ctx.fillStyle = col[bucket(r.score)]; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = col.panel; ctx.stroke();
   });
   const fs = 30;
-  const items = results.map(r => { const [x, y] = gp.centroid(r.f), m = measure(label(r.f).name, r.score, fs); return { x, y, w: m.w, m, r }; });
+  const items = results.map((r, i) => ({ x: pins[i].x, y: pins[i].y, w: measure(label(r.f).name, fs), r }));
   const spots = placeLabels(items, pins, fs);
   ctx.textBaseline = "middle"; ctx.lineJoin = "round";
   items.forEach((it, i) => {
-    const x0 = spots[i].x - it.w / 2, y = spots[i].y, name = label(it.r.f).name + " ";
+    const x0 = spots[i].x - it.w / 2, y = spots[i].y, name = label(it.r.f).name;
     ctx.lineWidth = 9; ctx.strokeStyle = col.land;
     ctx.font = `700 ${fs}px ${bodyFont}`; ctx.strokeText(name, x0, y); ctx.fillStyle = col.ink; ctx.fillText(name, x0, y);
-    ctx.font = `600 ${fs}px ${numFont}`; ctx.strokeText(String(it.r.score), x0 + it.m.a, y);
-    ctx.fillStyle = col[bucket(it.r.score)]; ctx.fillText(String(it.r.score), x0 + it.m.a, y);
   });
   ctx.restore();
 
