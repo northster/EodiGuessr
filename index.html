@@ -58,12 +58,12 @@ body{background:var(--sea);color:var(--ink);font-family:var(--f-body);font-size:
 .mapwrap{position:relative;flex:1;min-height:0}
 svg{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
 .sgg{fill:var(--land);stroke:var(--line);stroke-width:.7px;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.bare .sgg{stroke:var(--land)}
 .sgg.g{fill:var(--hit-soft);stroke:var(--hit);stroke-width:1.6px}
 .sgg.m{fill:var(--mid-soft);stroke:var(--mid);stroke-width:1.6px}
 .sgg.b{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6px}
 .pin{stroke:var(--panel);vector-effect:non-scaling-stroke;stroke-width:2px;fill:var(--ink)}
-.pin.g{fill:var(--hit)} .pin.m{fill:var(--mid)} .pin.b{fill:var(--accent)}
-.link{stroke-width:1.6px;stroke-dasharray:4 4;vector-effect:non-scaling-stroke;fill:none;stroke:var(--ink)}
+.link{stroke-width:2px;stroke-linecap:round;vector-effect:non-scaling-stroke;fill:none;stroke:var(--ink)}
 .link.g{stroke:var(--hit)} .link.m{stroke:var(--mid)} .link.b{stroke:var(--accent)}
 .lbl{font-family:var(--f-body);font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-linejoin:round;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 
@@ -179,45 +179,22 @@ const ROUNDS = 10;
 const K_KM = 45; // score falloff: 100 * e^(-d / K_KM)
 
 const features = topojson.feature(TOPO, TOPO.objects.sgg).features;
-const allLines = topojson.mesh(TOPO, TOPO.objects.sgg);
 features.forEach((f, i) => { f.id = i; });
-const label = f => f.properties.sido === "세종" ? { pre: "", name: "세종시" } : { pre: f.properties.sido, name: f.properties.name };
+const nameCount = d3.rollup(features, v => v.length, f => f.properties.name);
+const label = f => f.properties.sido === "세종" ? { pre: "", name: "세종시" }
+  : { pre: nameCount.get(f.properties.name) > 1 ? f.properties.sido : "", name: f.properties.name };
 const bucket = s => s >= 80 ? "g" : s >= 40 ? "m" : "b";
 const fmtKm = km => km === 0 ? "정답" : (km < 10 ? km.toFixed(1) : Math.round(km)) + "km";
 
 const MODES = [
   { id: "daily", name: "오늘의 문제", desc: "모두에게 같은 10곳, 하루 한 번", pool: () => features, daily: true, primary: true },
   { id: "all", name: "전국 무작위", desc: "전국 230개 시군구 중 10곳", pool: () => features },
+  { id: "hard", name: "어려움", desc: "시군구 경계선 없이 전국 10곳", pool: () => features, hard: true },
   { id: "metro", name: "수도권", desc: "서울 · 인천 · 경기만", pool: () => features.filter(f => ["서울", "인천", "경기"].includes(f.properties.sido)) },
 ];
 
-// ---------- label placement (shared by the map and the share image) ----------
-const mctx = document.createElement("canvas").getContext("2d");
 const bodyFont = getComputedStyle(document.documentElement).getPropertyValue("--f-body");
 const numFont = getComputedStyle(document.documentElement).getPropertyValue("--f-num");
-function measure(name, fs) {
-  mctx.font = `700 ${fs}px ${bodyFont}`;
-  return mctx.measureText(name).width;
-}
-// items: {x, y, w} in pixels; pins: {x, y, r}. Returns a center per item, avoiding pins and earlier labels.
-function placeLabels(items, pins, fs) {
-  const h = fs * 1.35, boxes = pins.map(p => ({ x0: p.x - p.r, y0: p.y - p.r, x1: p.x + p.r, y1: p.y + p.r }));
-  const ov = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
-  return items.map(it => {
-    const sx = it.w / 2 + fs * 0.6;
-    const cands = [[0, -h], [0, h], [sx, 0], [-sx, 0], [sx, -h], [-sx, -h], [sx, h], [-sx, h], [0, -2 * h], [0, 2 * h], [sx, -2 * h], [-sx, 2 * h]];
-    let best = null, bs = Infinity;
-    for (const [dx, dy] of cands) {
-      const x = it.x + dx, y = it.y + dy;
-      const b = { x0: x - it.w / 2 - 3, x1: x + it.w / 2 + 3, y0: y - h / 2, y1: y + h / 2 };
-      let s = Math.hypot(dx, dy) * 0.02;
-      for (const o of boxes) s += ov(b, o);
-      if (s < bs) { bs = s; best = { x, y, b }; }
-    }
-    boxes.push(best.b);
-    return best;
-  });
-}
 
 // ---------- map ----------
 const svg = d3.select("#map");
@@ -322,6 +299,7 @@ function paintRegions() {
   else if (revealed) shown.set(results[idx].f, bucket(results[idx].score));
   regionSel.attr("class", d => "sgg" + (shown.has(d) ? " " + shown.get(d) : ""));
   regionSel.filter(d => shown.has(d)).raise();
+  svg.classed("bare", phase === "done" || (phase === "play" && mode && mode.hard));
 }
 
 function start(m) {
@@ -369,32 +347,25 @@ svg.on("click", e => {
   $("verdict").innerHTML = `<span class="sub">위치를 옮기려면 다시 누르세요</span>`;
 });
 
-// Draws pins, dashed links and labels for whatever is visible now. Sizes are divided by zoom so they stay constant on screen.
+// Draws lines and labels for whatever is visible now. Sizes are divided by zoom so they stay constant on screen.
 function drawMarks() {
   gMarks.selectAll("*").remove();
-  const k = curK, t = d3.zoomTransform(svg.node());
+  const k = curK;
   const shown = phase === "done" ? results : (phase === "play" && revealed ? [results[idx]] : []);
+  // a line from where you tapped to the answer, with the answer's name written on the tap point
   for (const r of shown) {
     if (r.km > 0) gMarks.append("path").attr("class", "link " + bucket(r.score)).attr("d", `M${proj(r.guess)}L${proj(r.pt)}`);
   }
-  const pins = shown.map(r => ({ r, p: proj(r.guess) }));
-  if (phase === "play" && !revealed && guess) pins.push({ r: null, p: proj(guess) });
-  for (const { r, p } of pins) {
-    gMarks.append("circle").attr("class", "pin" + (r ? " " + bucket(r.score) : "")).attr("cx", p[0]).attr("cy", p[1]).attr("r", 6.5 / k);
+  for (const r of shown) {
+    const [x, y] = proj(r.guess);
+    gMarks.append("text").attr("class", "lbl").attr("x", x).attr("y", y)
+      .attr("font-size", 13 / k).attr("stroke-width", 5 / k).text(label(r.f).name);
   }
-  if (!shown.length) return;
-  const fs = 13;
-  const items = shown.map(r => {
-    const [x, y] = t.apply(proj(r.guess));
-    return { x, y, w: measure(label(r.f).name, fs), r };
-  });
-  const spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y, r: 8 }; }), fs);
-  items.forEach((it, i) => {
-    const [x, y] = t.invert([spots[i].x, spots[i].y]);
-    const txt = gMarks.append("text").attr("class", "lbl").attr("x", x).attr("y", y)
-      .attr("font-size", fs / k).attr("stroke-width", 4 / k);
-    txt.text(label(it.r.f).name);
-  });
+  // before confirming, mark the tap so it can be moved
+  if (phase === "play" && !revealed && guess) {
+    const [x, y] = proj(guess);
+    gMarks.append("circle").attr("class", "pin").attr("cx", x).attr("cy", y).attr("r", 6.5 / k);
+  }
 }
 
 function reveal() {
@@ -481,31 +452,23 @@ async function makeImage() {
   const p = d3.geoMercator().fitExtent([[mx + 70, my + 70], [mx + mw - 70, my + mh - 70]], target);
   const gp = d3.geoPath(p, ctx);
   ctx.beginPath(); features.forEach(f => gp(f)); ctx.fillStyle = col.land; ctx.fill();
-  ctx.beginPath(); gp(allLines); ctx.strokeStyle = col.line; ctx.lineWidth = 1.4; ctx.lineJoin = "round"; ctx.stroke();
   for (const r of results) {
     const k = bucket(r.score);
     ctx.beginPath(); gp(r.f); ctx.fillStyle = col[k + "s"]; ctx.fill(); ctx.strokeStyle = col[k]; ctx.lineWidth = 3; ctx.stroke();
   }
-  ctx.setLineDash([10, 9]); ctx.lineWidth = 3.5;
+  ctx.lineWidth = 4; ctx.lineCap = "round";
   for (const r of results) if (r.km > 0) {
     const a = p(r.guess), b = p(r.pt);
     ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = col[bucket(r.score)]; ctx.stroke();
   }
-  ctx.setLineDash([]);
-  const pins = results.map(r => { const [x, y] = p(r.guess); return { x, y, r: 16 }; });
-  results.forEach((r, i) => {
-    ctx.beginPath(); ctx.arc(pins[i].x, pins[i].y, 12, 0, Math.PI * 2);
-    ctx.fillStyle = col[bucket(r.score)]; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = col.panel; ctx.stroke();
-  });
   const fs = 30;
-  const items = results.map((r, i) => ({ x: pins[i].x, y: pins[i].y, w: measure(label(r.f).name, fs), r }));
-  const spots = placeLabels(items, pins, fs);
-  ctx.textBaseline = "middle"; ctx.lineJoin = "round";
-  items.forEach((it, i) => {
-    const x0 = spots[i].x - it.w / 2, y = spots[i].y, name = label(it.r.f).name;
+  ctx.textBaseline = "middle"; ctx.textAlign = "center"; ctx.lineJoin = "round";
+  results.forEach(r => {
+    const [x0, y] = p(r.guess), name = label(r.f).name;
     ctx.lineWidth = 9; ctx.strokeStyle = col.land;
     ctx.font = `700 ${fs}px ${bodyFont}`; ctx.strokeText(name, x0, y); ctx.fillStyle = col.ink; ctx.fillText(name, x0, y);
   });
+  ctx.textAlign = "left";
   ctx.restore();
 
   // footer: one square per round, then the address
