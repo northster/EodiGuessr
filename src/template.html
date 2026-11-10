@@ -56,8 +56,8 @@ svg{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;user
 .sgg.b{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6px}
 .pin{stroke:var(--panel);vector-effect:non-scaling-stroke;stroke-width:2px;fill:var(--ink)}
 .pin.g{fill:var(--hit)} .pin.m{fill:var(--mid)} .pin.b{fill:var(--accent)}
-.link{stroke-width:1.1px;stroke-linecap:round;vector-effect:non-scaling-stroke;fill:none;stroke:var(--ink)}
-.link.dash{stroke-width:1.6px;stroke-dasharray:4 4}
+.link{stroke-width:1.1px;stroke-opacity:.5;stroke-linecap:round;vector-effect:non-scaling-stroke;fill:none;stroke:var(--ink)}
+.link.dash{stroke-opacity:1;stroke-width:1.6px;stroke-dasharray:4 4}
 .link.g{stroke:var(--hit)} .link.m{stroke:var(--mid)} .link.b{stroke:var(--accent)}
 .lbl{font-family:var(--f-body);font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-linejoin:round;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 
@@ -180,11 +180,14 @@ const label = f => f.properties.sido === "세종" ? { pre: "", name: "세종시"
 const bucket = s => s >= 80 ? "g" : s >= 40 ? "m" : "b";
 const fmtKm = km => km === 0 ? "정답" : (km < 10 ? km.toFixed(1) : Math.round(km)) + "km";
 
+// Names used in more than one 시도 (중구, 동구, 고성군 …) are never asked.
+const askable = features.filter(f => nameCount.get(f.properties.name) === 1);
+const metroArea = features.filter(f => ["서울", "인천", "경기"].includes(f.properties.sido));
 const MODES = [
-  { id: "daily", name: "오늘의 문제", desc: "모두에게 같은 10곳, 하루 한 번", pool: () => features, daily: true, primary: true },
-  { id: "all", name: "전국 무작위", desc: "전국 230개 시군구 중 10곳", pool: () => features },
-  { id: "hard", name: "어려움", desc: "시군구 경계선 없이 전국 10곳", pool: () => features, hard: true },
-  { id: "metro", name: "수도권", desc: "서울 · 인천 · 경기만", pool: () => features.filter(f => ["서울", "인천", "경기"].includes(f.properties.sido)), region: true },
+  { id: "daily", name: "오늘의 문제", desc: "모두에게 같은 10곳, 하루 한 번", pool: () => askable, daily: true, primary: true },
+  { id: "all", name: "전국 무작위", desc: `전국 ${askable.length}개 시군구 중 10곳`, pool: () => askable },
+  { id: "hard", name: "어려움", desc: "시군구 경계선 없이 전국 10곳", pool: () => askable, hard: true },
+  { id: "metro", name: "수도권", desc: "서울 · 인천 · 경기만", pool: () => askable.filter(f => metroArea.includes(f)), area: metroArea },
 ];
 
 const bodyFont = getComputedStyle(document.documentElement).getPropertyValue("--f-body");
@@ -328,7 +331,7 @@ function start(m) {
   $("playRow").hidden = false; $("endRow").hidden = true;
   $("modeName").textContent = "· " + m.name;
   $("round").className = "round";
-  viewFeatures = m.region ? m.pool() : features;
+  viewFeatures = m.area || features;
   svg.interrupt().call(zoom.transform, d3.zoomIdentity);
   layout();
   nextRound();
@@ -478,11 +481,12 @@ async function makeImage() {
     const k = bucket(r.score);
     ctx.beginPath(); gp(r.f); ctx.fillStyle = col[k + "s"]; ctx.fill(); ctx.strokeStyle = col[k]; ctx.lineWidth = 3; ctx.stroke();
   }
-  ctx.lineWidth = 2.4; ctx.lineCap = "round";
+  ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.globalAlpha = 0.5;
   for (const r of results) if (r.km > 0) {
     const a = p(r.guess), b = p(r.pt);
     ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = col[bucket(r.score)]; ctx.stroke();
   }
+  ctx.globalAlpha = 1;
   const pins = results.map(r => { const [x, y] = p(r.guess); return { x, y, r: 14 }; });
   results.forEach((r, i) => {
     ctx.beginPath(); ctx.arc(pins[i].x, pins[i].y, 10, 0, Math.PI * 2);
@@ -540,7 +544,7 @@ $("copyText").onclick = () => {
 };
 
 function resetTop() {
-  $("target").innerHTML = "<small>예시</small>부산 중구";
+  $("target").innerHTML = "<small>예시</small>안동시";
   $("round").textContent = `${ROUNDS}문제`; $("round").className = "round";
   $("modeName").textContent = "";
   renderPips();
