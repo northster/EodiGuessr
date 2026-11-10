@@ -64,6 +64,8 @@ body{background:var(--sea);color:var(--ink);font-family:var(--f-body);font-size:
 .target:empty{display:none}
 .target small{font-family:var(--f-body);font-weight:700;font-size:.5em;color:var(--muted);margin-right:.35em;vertical-align:.18em}
 .target .of{font-family:var(--f-num);font-size:.45em;color:var(--muted);margin-left:.3em}
+.rank{display:inline-grid;place-items:center;min-width:1.25em;height:1.25em;padding:0 .18em;margin-right:.3em;border-radius:.22em;
+  font-family:var(--f-display);font-weight:400;color:#fff;vertical-align:-.1em;font-size:.9em;line-height:1}
 .pips{grid-column:1/-1;display:flex;gap:4px;margin-top:4px}
 .pip{flex:1;height:4px;border-radius:2px;background:var(--panel-2)}
 .pip.now{background:var(--muted)}
@@ -364,6 +366,10 @@ function pick(pool, n, rand) {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a.slice(0, n);
 }
+// Rank for the final score: 60 already earns an A
+const RANKS = [[90, "S"], [80, "A+"], [60, "A"], [45, "B"], [30, "C"], [0, "D"]];
+const rankOf = t => RANKS.find(([min]) => t >= min)[1];
+const rankColor = r => css(r === "B" ? "--mid" : r === "C" ? "--orange" : r === "D" ? "--accent" : "--hit");
 const total = () => Math.round(results.reduce((s, r) => s + r.score, 0) / ROUNDS);
 const sumKm = () => results.reduce((s, r) => s + r.km, 0);
 const fmtSum = () => Math.round(sumKm()).toLocaleString("ko-KR") + "km";
@@ -505,7 +511,8 @@ function finish() {
   phase = "done";
   $("hint").hidden = true;
   const tt = total();
-  $("target").innerHTML = `${tt}<span class="of">/ 100</span>`;
+  const rk = rankOf(tt);
+  $("target").innerHTML = `<span class="rank" style="background:${rankColor(rk)}">${rk}</span>${tt}<span class="of">/ 100</span>`;
   $("round").innerHTML = `총 오차 <b>${fmtSum()}</b>`; $("round").className = "round dist";
   $("playRow").hidden = true; $("endRow").hidden = false;
   renderPips(); paintRegions(); drawMarks(); fitResults();
@@ -536,7 +543,7 @@ $("shareClose").onclick = () => { $("shareOv").hidden = true; };
 
 // ---------- share image ----------
 let shotBlob = null;
-const shareText = () => `EodiGuessr · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100 · 총 오차 ${fmtSum()}\n` +
+const shareText = () => `EodiGuessr · ${mode.name}${mode.daily ? " " + today() : ""}\n${rankOf(total())} · ${total()}/100 · 총 오차 ${fmtSum()}\n` +
   results.map(emoji).join("") + (location.protocol.startsWith("http") ? "\n" + location.href.split(/[?#]/)[0].replace(/index\.html$/, "") : "");
 
 async function makeImage() {
@@ -556,13 +563,22 @@ async function makeImage() {
   ctx.fillText(mode.name + (mode.daily ? " · " + today() : ""), CW - 60, 98);
   ctx.textAlign = "left";
   const tt = total();
-  ctx.font = `600 132px ${numFont}`; ctx.fillStyle = col.ink; ctx.fillText(String(tt), 52, 250);
+  // rank badge, then the score
+  const rk = rankOf(tt);
+  ctx.font = `96px ${disp}`;
+  const bw = Math.max(136, ctx.measureText(rk).width + 48);
+  ctx.fillStyle = rankColor(rk); ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(60, 140, bw, 136, 26) : ctx.rect(60, 140, bw, 136); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(rk, 60 + bw / 2, 212);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  const sx = 60 + bw + 26;
+  ctx.font = `600 132px ${numFont}`; ctx.fillStyle = col.ink; ctx.fillText(String(tt), sx, 266);
   const w2 = ctx.measureText(String(tt)).width;
-  ctx.font = `500 40px ${numFont}`; ctx.fillStyle = col.muted; ctx.fillText("/ 100", 52 + w2 + 14, 250);
+  ctx.font = `500 40px ${numFont}`; ctx.fillStyle = col.muted; ctx.fillText("/ 100", sx + w2 + 14, 266);
   ctx.textAlign = "right";
-  ctx.font = `600 44px ${numFont}`; ctx.fillStyle = col.ink; ctx.fillText(fmtSum(), CW - 60, 250);
+  ctx.font = `600 44px ${numFont}`; ctx.fillStyle = col.ink; ctx.fillText(fmtSum(), CW - 60, 266);
   const w3 = ctx.measureText(fmtSum()).width;
-  ctx.font = `700 28px ${bodyFont}`; ctx.fillStyle = col.muted; ctx.fillText("총 오차", CW - 60 - w3 - 14, 248);
+  ctx.font = `700 28px ${bodyFont}`; ctx.fillStyle = col.muted; ctx.fillText("총 오차", CW - 60 - w3 - 14, 264);
   ctx.textAlign = "left";
 
   // map
