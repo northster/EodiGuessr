@@ -1,0 +1,384 @@
+<title>어디게 시군구</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: one screen. Top strip asks the question, the map fills the rest, a bottom strip holds the single action. */
+:root{
+  --sea:#dbe5eb; --land:#fbfcfc; --line:#c3cfd7; --border:#71858f;
+  --ink:#16232b; --muted:#5a6a74; --panel:#ffffff; --panel-2:#eef2f5;
+  --accent:#d7381d; --accent-soft:rgba(215,56,29,.16); --hit:#1d8656; --hit-soft:rgba(29,134,86,.22);
+  --shadow:0 6px 24px rgba(22,35,43,.14);
+  --f-display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --sea:#0d171d; --land:#1c2a32; --line:#30434e; --border:#7b939f;
+  --ink:#e7eef2; --muted:#98a9b2; --panel:#14212a; --panel-2:#1e2e38;
+  --accent:#ff6748; --accent-soft:rgba(255,103,72,.2); --hit:#3cc48c; --hit-soft:rgba(60,196,140,.24);
+  --shadow:0 6px 28px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --sea:#0d171d; --land:#1c2a32; --line:#30434e; --border:#7b939f;
+  --ink:#e7eef2; --muted:#98a9b2; --panel:#14212a; --panel-2:#1e2e38;
+  --accent:#ff6748; --accent-soft:rgba(255,103,72,.2); --hit:#3cc48c; --hit-soft:rgba(60,196,140,.24);
+  --shadow:0 6px 28px rgba(0,0,0,.5); color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--sea);color:var(--ink);font-family:var(--f-body);font-size:15px;overflow:hidden}
+.app{height:100%;display:flex;flex-direction:column}
+.bar{background:var(--panel);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top{padding-block:10px 12px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:end}
+.brand{font-family:var(--f-display);font-size:15px;letter-spacing:.02em;color:var(--muted);display:flex;gap:8px;align-items:center}
+.brand b{color:var(--accent);font-weight:400}
+.round{font-family:var(--f-num);font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.target{grid-column:1/-1;font-family:var(--f-display);font-size:clamp(28px,7vw,40px);line-height:1.05;min-height:1.05em;text-wrap:balance}
+.target small{font-family:var(--f-body);font-weight:700;font-size:.5em;color:var(--muted);margin-right:.35em;vertical-align:.18em}
+.pips{grid-column:1/-1;display:flex;gap:4px;margin-top:4px}
+.pip{flex:1;height:4px;border-radius:2px;background:var(--panel-2)}
+.pip.now{background:var(--muted)}
+.pip.g{background:var(--hit)} .pip.m{background:#d6a317} .pip.b{background:var(--accent)}
+
+.mapwrap{position:relative;flex:1;min-height:0}
+svg{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
+.sgg{fill:var(--land);stroke:var(--line);stroke-width:.6px;vector-effect:non-scaling-stroke}
+.sido{fill:none;stroke:var(--border);stroke-width:1.1px;vector-effect:non-scaling-stroke;stroke-linejoin:round;pointer-events:none}
+.sgg.answer{fill:var(--hit-soft);stroke:var(--hit);stroke-width:2px}
+.sgg.answer.miss{fill:var(--accent-soft);stroke:var(--accent)}
+.guess{fill:var(--ink);stroke:var(--panel);vector-effect:non-scaling-stroke;stroke-width:2px}
+.link{stroke:var(--ink);stroke-width:1.6px;stroke-dasharray:4 4;vector-effect:non-scaling-stroke;fill:none}
+.lbl{font-family:var(--f-body);font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-linejoin:round;text-anchor:middle;pointer-events:none}
+
+.zoom{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;display:flex;flex-direction:column;gap:6px}
+.zoom button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 18px var(--f-num);box-shadow:var(--shadow);cursor:pointer}
+.hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--panel);color:var(--muted);border:1px solid var(--line);padding:6px 12px;border-radius:999px;font-size:13px;white-space:nowrap;box-shadow:var(--shadow);pointer-events:none;transition:opacity .3s}
+
+.bottom{padding-block:12px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);display:flex;gap:12px;align-items:center;min-height:68px}
+.verdict{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.verdict .pts{font-family:var(--f-num);font-weight:600;font-size:22px;font-variant-numeric:tabular-nums}
+.verdict .sub{font-size:13px;color:var(--muted)}
+.btn{appearance:none;border:0;border-radius:12px;padding:13px 22px;font:700 16px var(--f-body);cursor:pointer;background:var(--ink);color:var(--panel);transition:transform .08s,opacity .2s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.3;cursor:default}
+.btn.alt{background:var(--panel-2);color:var(--ink)}
+.btn.accent{background:var(--accent);color:#fff}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.overlay{position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--sea) 55%,transparent);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto;z-index:5}
+.card{background:var(--panel);border-radius:18px;box-shadow:var(--shadow);width:min(420px,100%);padding:24px;display:flex;flex-direction:column;gap:16px}
+.card h1{font-family:var(--f-display);font-weight:400;font-size:44px;line-height:1;margin:0}
+.card h1 b{color:var(--accent);font-weight:400}
+.card p{margin:0;color:var(--muted);line-height:1.6}
+.modes{display:flex;flex-direction:column;gap:8px}
+.mode{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 12px;text-align:left;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:12px 14px;cursor:pointer;font:inherit}
+.mode:hover{border-color:var(--border)}
+.mode strong{font-size:16px}
+.mode span{grid-column:1;font-size:13px;color:var(--muted)}
+.mode em{grid-row:1/3;grid-column:2;font-style:normal;font-family:var(--f-num);font-size:12px;color:var(--muted)}
+.mode.primary{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.mode.primary span,.mode.primary em{color:color-mix(in srgb,var(--panel) 70%,transparent)}
+.foot{font-size:11px;color:var(--muted);line-height:1.5}
+.foot a{color:inherit}
+
+.final{display:flex;align-items:baseline;gap:8px}
+.final .n{font-family:var(--f-num);font-weight:600;font-size:76px;line-height:.9;font-variant-numeric:tabular-nums}
+.final .of{font-family:var(--f-num);color:var(--muted)}
+.grade{font-family:var(--f-display);font-size:22px}
+.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.rows li{display:grid;grid-template-columns:1fr auto 3.2em;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px;align-items:center}
+.rows .km{font-family:var(--f-num);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rows .p{font-family:var(--f-num);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.rows .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rows .nm small{color:var(--muted);margin-right:4px}
+.actions{display:flex;gap:8px}
+.actions .btn{flex:1}
+.toast{font-size:13px;color:var(--hit);min-height:1.2em;margin-top:-8px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="bar top">
+    <div class="brand"><span>어디<b>게</b></span><span id="modeName"></span></div>
+    <div class="round" id="round"></div>
+    <div class="target" id="target" aria-live="polite"></div>
+    <div class="pips" id="pips"></div>
+  </header>
+  <main class="mapwrap" id="mapwrap">
+    <svg id="map" role="img" aria-label="대한민국 시군구 지도"></svg>
+    <div class="hint" id="hint">지도를 눌러 위치를 찍으세요 · 두 손가락으로 확대</div>
+    <div class="zoom">
+      <button id="zin" aria-label="확대">+</button>
+      <button id="zout" aria-label="축소">−</button>
+      <button id="zfit" aria-label="전체 보기">⌂</button>
+    </div>
+    <div class="overlay" id="startOv">
+      <div class="card">
+        <h1>어디<b>게</b></h1>
+        <p>지역 이름이 나오면 지도에서 그 위치를 찍으세요. 10문제를 풀면 거리에 따라 0~100점이 나옵니다.</p>
+        <div class="modes" id="modes"></div>
+        <div class="foot">경계: 통계청 SGIS 행정동 경계(공공누리 제1유형)를 <a href="https://github.com/vuski/admdongkor" target="_blank" rel="noopener">vuski/admdongkor</a>가 가공한 2026년 10월 기준 자료(CC BY 4.0). 일반구는 시 단위로 합쳤습니다.</div>
+      </div>
+    </div>
+    <div class="overlay" id="endOv" hidden>
+      <div class="card">
+        <div class="grade" id="grade"></div>
+        <div class="final"><span class="n" id="finalN">0</span><span class="of">/ 100</span></div>
+        <ul class="rows" id="rows"></ul>
+        <div class="actions">
+          <button class="btn alt" id="share">결과 복사</button>
+          <button class="btn" id="again">다시 하기</button>
+        </div>
+        <div class="toast" id="toast"></div>
+      </div>
+    </div>
+  </main>
+  <footer class="bar bottom">
+    <div class="verdict" id="verdict"><span class="sub">시작할 모드를 고르세요</span></div>
+    <button class="btn" id="action" disabled>확정</button>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const TOPO = /*TOPO*/null;
+const ROUNDS = 10;
+const K_KM = 45; // score falloff: 100 * e^(-d / K_KM)
+
+const features = topojson.feature(TOPO, TOPO.objects.sgg).features;
+const sidoMesh = topojson.mesh(TOPO, TOPO.objects.sgg, (a, b) => a.properties.sido !== b.properties.sido);
+const coast = topojson.mesh(TOPO, TOPO.objects.sgg, (a, b) => a === b);
+features.forEach((f, i) => { f.id = i; });
+const label = f => f.properties.sido === "세종" ? { pre: "", name: "세종시" } : { pre: f.properties.sido, name: f.properties.name };
+const labelText = f => { const l = label(f); return (l.pre ? l.pre + " " : "") + l.name; };
+
+const MODES = [
+  { id: "daily", name: "오늘의 문제", desc: "모두에게 같은 10곳, 하루 한 번", pool: () => features, daily: true, primary: true },
+  { id: "all", name: "전국 무작위", desc: "전국 230개 시군구 중 10곳", pool: () => features },
+  { id: "metro", name: "수도권", desc: "서울 · 인천 · 경기만", pool: () => features.filter(f => ["서울", "인천", "경기"].includes(f.properties.sido)) },
+];
+
+// ---------- map ----------
+const svg = d3.select("#map");
+const wrap = document.getElementById("mapwrap");
+const proj = d3.geoMercator();
+const path = d3.geoPath(proj);
+const gZoom = svg.append("g");
+const gLand = gZoom.append("g");
+const gMarks = gZoom.append("g");
+let W = 0, H = 0, curK = 1;
+
+const regionSel = gLand.selectAll("path.sgg").data(features).join("path").attr("class", "sgg");
+const sidoPath = gLand.append("path").attr("class", "sido").datum(sidoMesh);
+const coastPath = gLand.append("path").attr("class", "sido").datum(coast);
+
+const zoom = d3.zoom().scaleExtent([1, 40]).on("zoom", e => {
+  gZoom.attr("transform", e.transform);
+  curK = e.transform.k;
+  gMarks.selectAll("circle.guess").attr("r", 7 / curK);
+  gMarks.selectAll("text.lbl").attr("font-size", 14 / curK).attr("stroke-width", 4 / curK);
+});
+svg.call(zoom).on("dblclick.zoom", null);
+
+function layout() {
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  svg.attr("viewBox", [0, 0, W, H]);
+  const pad = Math.min(W, H) * 0.05;
+  proj.fitExtent([[pad, pad], [W - pad, H - pad]], { type: "FeatureCollection", features });
+  regionSel.attr("d", path);
+  sidoPath.attr("d", path); coastPath.attr("d", path);
+  zoom.translateExtent([[-W * .5, -H * .5], [W * 1.5, H * 1.5]]);
+  redrawMarks();
+}
+const dur = () => matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 650;
+document.getElementById("zin").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.8);
+document.getElementById("zout").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.8);
+document.getElementById("zfit").onclick = () => svg.transition().duration(dur()).call(zoom.transform, d3.zoomIdentity);
+
+function zoomToBox([[x0, y0], [x1, y1]]) {
+  const bw = Math.max(x1 - x0, 20), bh = Math.max(y1 - y0, 20);
+  const k = Math.max(1, Math.min(12, 0.62 / Math.max(bw / W, bh / H)));
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  svg.transition().duration(dur()).call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-cx, -cy));
+}
+
+// ---------- geometry: distance from a point to a region (km) ----------
+function nearest(feature, [lon, lat]) {
+  if (d3.geoContains(feature, [lon, lat])) return { km: 0, pt: [lon, lat] };
+  const cx = Math.cos(lat * Math.PI / 180) * 111.32, cy = 110.57;
+  let best = Infinity, bp = null;
+  const g = feature.geometry;
+  const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+  for (const poly of polys) for (const ring of poly) for (let i = 1; i < ring.length; i++) {
+    const ax = (ring[i - 1][0] - lon) * cx, ay = (ring[i - 1][1] - lat) * cy;
+    const bx = (ring[i][0] - lon) * cx, by = (ring[i][1] - lat) * cy;
+    const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+    const t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
+    const px = ax + t * dx, py = ay + t * dy, d = Math.hypot(px, py);
+    if (d < best) { best = d; bp = [lon + px / cx, lat + py / cy]; }
+  }
+  return { km: best, pt: bp };
+}
+const scoreFor = km => km < 0.5 ? 100 : Math.round(100 * Math.exp(-km / K_KM));
+
+// ---------- game state ----------
+let mode = null, queue = [], idx = 0, results = [], guess = null, revealed = false;
+
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+function pick(pool, n, rand) {
+  const a = pool.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, n);
+}
+
+const $ = id => document.getElementById(id);
+const action = $("action");
+
+function renderModes() {
+  $("modes").innerHTML = "";
+  for (const m of MODES) {
+    const b = document.createElement("button");
+    b.className = "mode" + (m.primary ? " primary" : "");
+    b.innerHTML = `<strong>${m.name}</strong><span>${m.desc}</span><em>${m.daily ? today().slice(5).replace("-", ".") : m.pool().length + "곳"}</em>`;
+    b.onclick = () => start(m);
+    $("modes").append(b);
+  }
+}
+
+function start(m) {
+  mode = m;
+  const seed = m.daily ? Number(today().replaceAll("-", "")) : (Math.random() * 2 ** 31) | 0;
+  queue = pick(m.pool(), ROUNDS, rng(seed));
+  idx = 0; results = [];
+  $("startOv").hidden = true; $("endOv").hidden = true;
+  $("modeName").textContent = "· " + m.name;
+  svg.transition().duration(dur()).call(zoom.transform, d3.zoomIdentity);
+  nextRound();
+}
+
+function nextRound() {
+  guess = null; revealed = false;
+  regionSel.classed("answer", false).classed("miss", false);
+  gMarks.selectAll("*").remove();
+  const f = queue[idx], l = label(f);
+  $("target").innerHTML = (l.pre ? `<small>${l.pre}</small>` : "") + l.name;
+  $("round").textContent = `${idx + 1} / ${ROUNDS}`;
+  renderPips();
+  $("verdict").innerHTML = `<span class="sub">지도를 눌러 위치를 찍으세요</span>`;
+  action.textContent = "확정"; action.className = "btn"; action.disabled = true;
+  if (curK > 1.01 && idx > 0) svg.transition().duration(dur()).call(zoom.transform, d3.zoomIdentity);
+}
+
+function renderPips() {
+  $("pips").innerHTML = "";
+  for (let i = 0; i < ROUNDS; i++) {
+    const p = document.createElement("div"), r = results[i];
+    p.className = "pip" + (r ? (r.score >= 80 ? " g" : r.score >= 40 ? " m" : " b") : i === idx ? " now" : "");
+    $("pips").append(p);
+  }
+}
+
+svg.on("click", e => {
+  if (!mode || revealed || idx >= ROUNDS) return;
+  const [x, y] = d3.pointer(e, gZoom.node());
+  const ll = proj.invert([x, y]);
+  if (!ll) return;
+  guess = ll;
+  $("hint").style.opacity = 0;
+  redrawMarks();
+  action.disabled = false;
+  $("verdict").innerHTML = `<span class="sub">위치를 옮기려면 다시 누르세요</span>`;
+});
+
+function redrawMarks() {
+  gMarks.selectAll("*").remove();
+  if (!mode || idx >= ROUNDS) return;
+  const f = queue[idx];
+  if (revealed) {
+    const r = results[idx];
+    if (r.km > 0) gMarks.append("path").attr("class", "link").attr("d", `M${proj(r.guess)}L${proj(r.pt)}`);
+    const [cx, cy] = path.centroid(f);
+    gMarks.append("text").attr("class", "lbl").attr("x", cx).attr("y", cy).attr("dy", "0.35em").text(label(f).name);
+  }
+  if (guess) {
+    const [gx, gy] = proj(guess);
+    gMarks.append("circle").attr("class", "guess").attr("cx", gx).attr("cy", gy);
+  }
+  gMarks.selectAll("circle.guess").attr("r", 7 / curK);
+  gMarks.selectAll("text.lbl").attr("font-size", 14 / curK).attr("stroke-width", 4 / curK);
+}
+
+function reveal() {
+  const f = queue[idx];
+  const { km, pt } = nearest(f, guess);
+  const score = scoreFor(km);
+  results[idx] = { f, km, pt, guess, score };
+  revealed = true;
+  regionSel.filter(d => d === f).classed("answer", true).classed("miss", km > 0).raise();
+  sidoPath.raise(); coastPath.raise();
+  redrawMarks();
+  const b = path.bounds(f), [gx, gy] = proj(guess);
+  zoomToBox([[Math.min(b[0][0], gx), Math.min(b[0][1], gy)], [Math.max(b[1][0], gx), Math.max(b[1][1], gy)]]);
+  $("verdict").innerHTML = `<span class="pts">+${score}점</span><span class="sub">${km === 0 ? "정확히 안쪽입니다" : `경계까지 ${km < 10 ? km.toFixed(1) : Math.round(km)}km 떨어졌습니다`}</span>`;
+  renderPips();
+  const last = idx === ROUNDS - 1;
+  action.textContent = last ? "결과 보기" : "다음 지역";
+  action.className = "btn accent";
+}
+
+function finish() {
+  const total = Math.round(results.reduce((s, r) => s + r.score, 0) / ROUNDS);
+  $("finalN").textContent = total;
+  $("grade").textContent = total >= 90 ? "걸어 다니는 지도" : total >= 75 ? "국토 박사" : total >= 55 ? "꽤 아시네요" : total >= 35 ? "어디서 들어본 곳들" : "여행이 필요해요";
+  $("rows").innerHTML = results.map(r => {
+    const l = label(r.f);
+    return `<li><span class="nm">${l.pre ? `<small>${l.pre}</small>` : ""}${l.name}</span><span class="km">${r.km === 0 ? "정답" : (r.km < 10 ? r.km.toFixed(1) : Math.round(r.km)) + "km"}</span><span class="p">${r.score}</span></li>`;
+  }).join("");
+  $("toast").textContent = "";
+  $("endOv").hidden = false;
+  $("verdict").innerHTML = `<span class="pts">${total}점</span><span class="sub">${mode.name} 완료</span>`;
+  action.textContent = "처음으로"; action.className = "btn alt"; action.disabled = false;
+  idx = ROUNDS;
+  if (mode.daily) { try { localStorage.setItem("eodige-daily-" + today(), String(total)); } catch (e) {} }
+  // animate the number
+  const n = $("finalN"), t0 = performance.now(), d = dur() * 1.4;
+  if (d) (function tick(t) { const p = Math.min(1, (t - t0) / d); n.textContent = Math.round(total * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(tick); })(t0);
+}
+
+function shareText() {
+  const total = $("finalN").textContent;
+  const sq = results.map(r => r.score >= 80 ? "🟩" : r.score >= 40 ? "🟨" : "🟥").join("");
+  return `어디게 · ${mode.name}${mode.daily ? " " + today() : ""}\n${total}/100\n${sq}`;
+}
+$("share").onclick = () => {
+  const text = shareText();
+  const ok = () => $("toast").textContent = "복사했습니다. 붙여넣어 공유하세요.";
+  try {
+    navigator.clipboard.writeText(text).then(ok, () => { $("toast").textContent = text; });
+  } catch (e) { $("toast").textContent = text; }
+};
+$("again").onclick = () => start(mode.daily ? MODES[1] : mode);
+
+action.onclick = () => {
+  if (idx >= ROUNDS) { $("endOv").hidden = true; $("startOv").hidden = false; mode = null; resetTop(); return; }
+  if (!revealed) { if (guess) reveal(); return; }
+  if (idx === ROUNDS - 1) { finish(); return; }
+  idx++; nextRound();
+};
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && !action.disabled && document.activeElement === document.body) { e.preventDefault(); action.click(); } });
+
+function resetTop() {
+  $("target").innerHTML = "<small>예시</small>부산 중구";
+  $("round").textContent = `${ROUNDS}문제`;
+  $("modeName").textContent = "";
+  results = []; idx = 0; renderPips();
+  $("verdict").innerHTML = `<span class="sub">시작할 모드를 고르세요</span>`;
+  action.textContent = "확정"; action.className = "btn"; action.disabled = true;
+  regionSel.classed("answer", false).classed("miss", false);
+  gMarks.selectAll("*").remove();
+}
+
+new ResizeObserver(layout).observe(wrap);
+layout(); renderModes(); resetTop();
+</script>
