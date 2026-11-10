@@ -345,12 +345,13 @@ function scoreFor(km, f) {
   if (!isMetro(f)) return Math.round(base);
   return Math.round(base * (1 - METRO.A * (1 - Math.exp(-x / METRO.rise)) * Math.exp(-x / METRO.fade)));
 }
-// Easter egg: a 제주 answer tapped off the island scores 0
+// 제주 answers: tapped off the island scores 0 (easter egg); on the island but in the other city, a flat 50
 const jeju = features.filter(f => f.properties.sido === "제주");
 const offJeju = (f, g) => f.properties.sido === "제주" && Math.min(...jeju.map(j => nearest(j, g).km)) > 30;
 function judge(f, g) {
   const { km, pt } = nearest(f, g), joke = offJeju(f, g);
-  return { f, km, pt, guess: g, score: joke ? 0 : scoreFor(km, f), joke };
+  const score = joke ? 0 : f.properties.sido === "제주" ? (km <= GRACE ? 100 : 50) : scoreFor(km, f);
+  return { f, km, pt, guess: g, score, joke };
 }
 
 // ---------- game state ----------
