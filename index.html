@@ -122,6 +122,27 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .actions .btn{flex:1}
 .shot{width:100%;max-height:58vh;object-fit:contain;border-radius:10px;background:var(--panel-2)}
 .toast{font-size:13px;color:var(--hit);min-height:1.2em;margin-top:-8px;white-space:pre-line}
+.side{display:none}
+@media (min-width: 900px){
+  /* PC: the map fills the left, a 380px column on the right holds the question, the round list and the actions */
+  .app{display:grid;grid-template-columns:minmax(0,1fr) 380px;grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"map top" "map side" "map bottom"}
+  .top{grid-area:top;border-bottom:0;border-left:1px solid var(--line);padding-block:24px 16px;padding-inline:28px}
+  .mapwrap{grid-area:map}
+  .bottom{grid-area:bottom;border-top:1px solid var(--line);border-left:1px solid var(--line);padding-inline:28px;padding-block:18px}
+  .side{display:flex;flex-direction:column;gap:12px;grid-area:side;background:var(--panel);border-left:1px solid var(--line);padding:4px 28px 16px;overflow:auto;min-height:0}
+  .side h3{margin:8px 0 0;font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+  .side .empty{color:var(--muted);font-size:14px;line-height:1.6}
+  .top{grid-template-columns:1fr;gap:6px}
+  .brand{font-size:18px;white-space:nowrap}
+  .round{text-align:left}
+  .target{font-size:44px}
+  .round{font-size:14px}
+  .round.dist{font-size:16px}
+  #openList{display:none}
+  .row.even .btn{padding-inline:8px;font-size:15px}
+  .zoom{right:16px;bottom:16px}
+}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 
@@ -168,6 +189,11 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
       </div>
     </div>
   </main>
+  <section class="side" aria-label="문제별 결과">
+    <h3>문제별 결과</h3>
+    <ul class="rows" id="sideRows"></ul>
+    <p class="empty" id="sideEmpty">문제를 풀면 여기에 지역별 거리와 점수가 쌓입니다.</p>
+  </section>
   <footer class="bar bottom">
     <div class="row" id="playRow">
       <div class="verdict" id="verdict"><span class="sub">시작할 모드를 고르세요</span></div>
@@ -405,6 +431,7 @@ function renderPips() {
     if (r) p.style.background = heat(r);
     $("pips").append(p);
   }
+  renderRows();
 }
 
 svg.on("click", e => {
@@ -431,10 +458,10 @@ function drawMarks() {
   const pins = shown.map(r => ({ c: heat(r), p: proj(r.guess) }));
   if (phase === "play" && !revealed && guess) pins.push({ c: null, p: proj(guess) });
   for (const { c, p } of pins) {
-    gMarks.append("circle").attr("class", "pin").style("fill", c).attr("cx", p[0]).attr("cy", p[1]).attr("r", 6 / k);
+    gMarks.append("circle").attr("class", "pin").style("fill", c).attr("cx", p[0]).attr("cy", p[1]).attr("r", (W >= 700 ? 7 : 6) / k);
   }
   if (!shown.length) return;
-  const fs = 13;
+  const fs = W >= 700 ? 15 : 13;
   const items = shown.map(r => { const [x, y] = t.apply(path.centroid(r.f)); return { x, y, w: measure(label(r.f).name, fs) }; });
   const spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y, r: 8 }; }), fs);
   shown.forEach((r, i) => {
@@ -468,10 +495,16 @@ function finish() {
   $("round").innerHTML = `총 오차 <b>${fmtSum()}</b>`; $("round").className = "round dist";
   $("playRow").hidden = true; $("endRow").hidden = false;
   renderPips(); paintRegions(); drawMarks(); fitResults();
-  $("rows").innerHTML = results.map(r => {
+}
+
+function renderRows() {
+  const rs = results.filter(Boolean);
+  const html = rs.map(r => {
     const l = label(r.f);
     return `<li><span class="nm">${l.pre ? `<small>${l.pre}</small>` : ""}${l.name}</span><span class="km">${fmtKm(r.km)}</span><span class="p" style="color:${heat(r)}">${r.score}</span></li>`;
-  }).join("") + `<li class="sum"><span class="nm">합계</span><span class="km">${fmtSum()}</span><span class="p">${tt}</span></li>`;
+  }).join("") + (phase === "done" ? `<li class="sum"><span class="nm">합계</span><span class="km">${fmtSum()}</span><span class="p">${total()}</span></li>` : "");
+  $("rows").innerHTML = html; $("sideRows").innerHTML = html;
+  $("sideEmpty").hidden = rs.length > 0;
 }
 
 action.onclick = () => {
