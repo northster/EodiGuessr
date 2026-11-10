@@ -3,25 +3,29 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
 <style>
-/* Layout: one screen. Top strip asks the question, the map fills the rest, a bottom strip holds the single action. */
+/* Layout: one screen. Top strip asks the question, the map fills the rest, a bottom strip holds the actions. */
 :root{
-  --sea:#dbe5eb; --land:#fbfcfc; --line:#c3cfd7; --border:#71858f;
+  --sea:#dbe5eb; --land:#fbfcfc; --line:#bfccd5; --border:#71858f;
   --ink:#16232b; --muted:#5a6a74; --panel:#ffffff; --panel-2:#eef2f5;
-  --accent:#d7381d; --accent-soft:rgba(215,56,29,.16); --hit:#1d8656; --hit-soft:rgba(29,134,86,.22);
+  --accent:#d7381d; --accent-soft:rgba(215,56,29,.18);
+  --hit:#1d8656; --hit-soft:rgba(29,134,86,.24);
+  --mid:#c08a0c; --mid-soft:rgba(214,163,23,.26);
   --shadow:0 6px 24px rgba(22,35,43,.14);
   --f-display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
   --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --sea:#0d171d; --land:#1c2a32; --line:#30434e; --border:#7b939f;
+  --sea:#0d171d; --land:#1c2a32; --line:#344853; --border:#7b939f;
   --ink:#e7eef2; --muted:#98a9b2; --panel:#14212a; --panel-2:#1e2e38;
-  --accent:#ff6748; --accent-soft:rgba(255,103,72,.2); --hit:#3cc48c; --hit-soft:rgba(60,196,140,.24);
+  --accent:#ff6748; --accent-soft:rgba(255,103,72,.24); --hit:#3cc48c; --hit-soft:rgba(60,196,140,.26);
+  --mid:#e8b83c; --mid-soft:rgba(232,184,60,.24);
   --shadow:0 6px 28px rgba(0,0,0,.5); color-scheme:dark}}
 :root[data-theme="dark"]{
-  --sea:#0d171d; --land:#1c2a32; --line:#30434e; --border:#7b939f;
+  --sea:#0d171d; --land:#1c2a32; --line:#344853; --border:#7b939f;
   --ink:#e7eef2; --muted:#98a9b2; --panel:#14212a; --panel-2:#1e2e38;
-  --accent:#ff6748; --accent-soft:rgba(255,103,72,.2); --hit:#3cc48c; --hit-soft:rgba(60,196,140,.24);
+  --accent:#ff6748; --accent-soft:rgba(255,103,72,.24); --hit:#3cc48c; --hit-soft:rgba(60,196,140,.26);
+  --mid:#e8b83c; --mid-soft:rgba(232,184,60,.24);
   --shadow:0 6px 28px rgba(0,0,0,.5); color-scheme:dark}
 
 html,body{height:100%}
@@ -32,28 +36,36 @@ body{background:var(--sea);color:var(--ink);font-family:var(--f-body);font-size:
 .brand{font-family:var(--f-display);font-size:15px;letter-spacing:.02em;color:var(--muted);display:flex;gap:8px;align-items:center}
 .brand b{color:var(--accent);font-weight:400}
 .round{font-family:var(--f-num);font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.round.grade{font-family:var(--f-display);font-size:18px;color:var(--ink)}
 .target{grid-column:1/-1;font-family:var(--f-display);font-size:clamp(28px,7vw,40px);line-height:1.05;min-height:1.05em;text-wrap:balance}
 .target small{font-family:var(--f-body);font-weight:700;font-size:.5em;color:var(--muted);margin-right:.35em;vertical-align:.18em}
+.target .of{font-family:var(--f-num);font-size:.45em;color:var(--muted);margin-left:.3em}
 .pips{grid-column:1/-1;display:flex;gap:4px;margin-top:4px}
 .pip{flex:1;height:4px;border-radius:2px;background:var(--panel-2)}
 .pip.now{background:var(--muted)}
-.pip.g{background:var(--hit)} .pip.m{background:#d6a317} .pip.b{background:var(--accent)}
+.pip.g{background:var(--hit)} .pip.m{background:var(--mid)} .pip.b{background:var(--accent)}
 
 .mapwrap{position:relative;flex:1;min-height:0}
 svg{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
-.sgg{fill:var(--land);stroke:var(--line);stroke-width:.6px;vector-effect:non-scaling-stroke}
-.sido{fill:none;stroke:var(--border);stroke-width:1.1px;vector-effect:non-scaling-stroke;stroke-linejoin:round;pointer-events:none}
-.sgg.answer{fill:var(--hit-soft);stroke:var(--hit);stroke-width:2px}
-.sgg.answer.miss{fill:var(--accent-soft);stroke:var(--accent)}
-.guess{fill:var(--ink);stroke:var(--panel);vector-effect:non-scaling-stroke;stroke-width:2px}
-.link{stroke:var(--ink);stroke-width:1.6px;stroke-dasharray:4 4;vector-effect:non-scaling-stroke;fill:none}
-.lbl{font-family:var(--f-body);font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-linejoin:round;text-anchor:middle;pointer-events:none}
+.sgg{fill:var(--land);stroke:var(--line);stroke-width:.7px;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.sgg.g{fill:var(--hit-soft);stroke:var(--hit);stroke-width:1.6px}
+.sgg.m{fill:var(--mid-soft);stroke:var(--mid);stroke-width:1.6px}
+.sgg.b{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6px}
+.pin{stroke:var(--panel);vector-effect:non-scaling-stroke;stroke-width:2px;fill:var(--ink)}
+.pin.g{fill:var(--hit)} .pin.m{fill:var(--mid)} .pin.b{fill:var(--accent)}
+.link{stroke-width:1.6px;stroke-dasharray:4 4;vector-effect:non-scaling-stroke;fill:none;stroke:var(--ink)}
+.link.g{stroke:var(--hit)} .link.m{stroke:var(--mid)} .link.b{stroke:var(--accent)}
+.lbl{font-family:var(--f-body);font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-linejoin:round;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.lbl .s{font-family:var(--f-num);font-weight:600}
+.lbl .s.g{fill:var(--hit)} .lbl .s.m{fill:var(--mid)} .lbl .s.b{fill:var(--accent)}
 
 .zoom{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;display:flex;flex-direction:column;gap:6px}
 .zoom button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 18px var(--f-num);box-shadow:var(--shadow);cursor:pointer}
 .hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--panel);color:var(--muted);border:1px solid var(--line);padding:6px 12px;border-radius:999px;font-size:13px;white-space:nowrap;box-shadow:var(--shadow);pointer-events:none;transition:opacity .3s}
 
-.bottom{padding-block:12px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);display:flex;gap:12px;align-items:center;min-height:68px}
+.bottom{padding-block:12px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);min-height:68px;display:flex;align-items:center}
+.row{display:flex;gap:12px;align-items:center;flex:1;min-width:0}
+.row.even .btn{flex:1;padding-inline:10px}
 .verdict{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .verdict .pts{font-family:var(--f-num);font-weight:600;font-size:22px;font-variant-numeric:tabular-nums}
 .verdict .sub{font-size:13px;color:var(--muted)}
@@ -68,6 +80,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .card{background:var(--panel);border-radius:18px;box-shadow:var(--shadow);width:min(420px,100%);padding:24px;display:flex;flex-direction:column;gap:16px}
 .card h1{font-family:var(--f-display);font-weight:400;font-size:44px;line-height:1;margin:0}
 .card h1 b{color:var(--accent);font-weight:400}
+.card h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0}
 .card p{margin:0;color:var(--muted);line-height:1.6}
 .modes{display:flex;flex-direction:column;gap:8px}
 .mode{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 12px;text-align:left;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:12px 14px;cursor:pointer;font:inherit}
@@ -80,19 +93,17 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .foot{font-size:11px;color:var(--muted);line-height:1.5}
 .foot a{color:inherit}
 
-.final{display:flex;align-items:baseline;gap:8px}
-.final .n{font-family:var(--f-num);font-weight:600;font-size:76px;line-height:.9;font-variant-numeric:tabular-nums}
-.final .of{font-family:var(--f-num);color:var(--muted)}
-.grade{font-family:var(--f-display);font-size:22px}
 .rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
 .rows li{display:grid;grid-template-columns:1fr auto 3.2em;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px;align-items:center}
 .rows .km{font-family:var(--f-num);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .rows .p{font-family:var(--f-num);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.rows .p.g{color:var(--hit)} .rows .p.m{color:var(--mid)} .rows .p.b{color:var(--accent)}
 .rows .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rows .nm small{color:var(--muted);margin-right:4px}
-.actions{display:flex;gap:8px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
 .actions .btn{flex:1}
-.toast{font-size:13px;color:var(--hit);min-height:1.2em;margin-top:-8px}
+.shot{width:100%;max-height:58vh;object-fit:contain;border-radius:10px;background:var(--panel-2)}
+.toast{font-size:13px;color:var(--hit);min-height:1.2em;margin-top:-8px;white-space:pre-line}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 
@@ -119,22 +130,36 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
         <div class="foot">경계: 통계청 SGIS 행정동 경계(공공누리 제1유형)를 <a href="https://github.com/vuski/admdongkor" target="_blank" rel="noopener">vuski/admdongkor</a>가 가공한 2026년 10월 기준 자료(CC BY 4.0). 일반구는 시 단위로 합쳤습니다.</div>
       </div>
     </div>
-    <div class="overlay" id="endOv" hidden>
+    <div class="overlay" id="listOv" hidden>
       <div class="card">
-        <div class="grade" id="grade"></div>
-        <div class="final"><span class="n" id="finalN">0</span><span class="of">/ 100</span></div>
+        <h2>문제별 점수</h2>
         <ul class="rows" id="rows"></ul>
+        <div class="actions"><button class="btn alt" id="listClose">지도로 돌아가기</button></div>
+      </div>
+    </div>
+    <div class="overlay" id="shareOv" hidden>
+      <div class="card">
+        <img class="shot" id="shot" alt="결과 지도 이미지">
         <div class="actions">
-          <button class="btn alt" id="share">결과 복사</button>
-          <button class="btn" id="again">다시 하기</button>
+          <button class="btn accent" id="shareImg">공유하기</button>
+          <button class="btn alt" id="saveImg">이미지 저장</button>
+          <button class="btn alt" id="copyText">텍스트 복사</button>
         </div>
         <div class="toast" id="toast"></div>
+        <div class="actions"><button class="btn alt" id="shareClose">닫기</button></div>
       </div>
     </div>
   </main>
   <footer class="bar bottom">
-    <div class="verdict" id="verdict"><span class="sub">시작할 모드를 고르세요</span></div>
-    <button class="btn" id="action" disabled>확정</button>
+    <div class="row" id="playRow">
+      <div class="verdict" id="verdict"><span class="sub">시작할 모드를 고르세요</span></div>
+      <button class="btn" id="action" disabled>확정</button>
+    </div>
+    <div class="row even" id="endRow" hidden>
+      <button class="btn alt" id="openList">목록</button>
+      <button class="btn accent" id="openShare">결과 공유</button>
+      <button class="btn" id="again">다시 하기</button>
+    </div>
   </footer>
 </div>
 
@@ -146,17 +171,46 @@ const ROUNDS = 10;
 const K_KM = 45; // score falloff: 100 * e^(-d / K_KM)
 
 const features = topojson.feature(TOPO, TOPO.objects.sgg).features;
-const sidoMesh = topojson.mesh(TOPO, TOPO.objects.sgg, (a, b) => a.properties.sido !== b.properties.sido);
-const coast = topojson.mesh(TOPO, TOPO.objects.sgg, (a, b) => a === b);
+const allLines = topojson.mesh(TOPO, TOPO.objects.sgg);
 features.forEach((f, i) => { f.id = i; });
 const label = f => f.properties.sido === "세종" ? { pre: "", name: "세종시" } : { pre: f.properties.sido, name: f.properties.name };
-const labelText = f => { const l = label(f); return (l.pre ? l.pre + " " : "") + l.name; };
+const bucket = s => s >= 80 ? "g" : s >= 40 ? "m" : "b";
+const fmtKm = km => km === 0 ? "정답" : (km < 10 ? km.toFixed(1) : Math.round(km)) + "km";
 
 const MODES = [
   { id: "daily", name: "오늘의 문제", desc: "모두에게 같은 10곳, 하루 한 번", pool: () => features, daily: true, primary: true },
   { id: "all", name: "전국 무작위", desc: "전국 230개 시군구 중 10곳", pool: () => features },
   { id: "metro", name: "수도권", desc: "서울 · 인천 · 경기만", pool: () => features.filter(f => ["서울", "인천", "경기"].includes(f.properties.sido)) },
 ];
+
+// ---------- label placement (shared by the map and the share image) ----------
+const mctx = document.createElement("canvas").getContext("2d");
+const bodyFont = getComputedStyle(document.documentElement).getPropertyValue("--f-body");
+const numFont = getComputedStyle(document.documentElement).getPropertyValue("--f-num");
+function measure(name, score, fs) {
+  mctx.font = `700 ${fs}px ${bodyFont}`; const a = mctx.measureText(name + " ").width;
+  mctx.font = `600 ${fs}px ${numFont}`; const b = mctx.measureText(String(score)).width;
+  return { a, b, w: a + b };
+}
+// items: {x, y, w} in pixels; pins: {x, y, r}. Returns a center per item, avoiding pins and earlier labels.
+function placeLabels(items, pins, fs) {
+  const h = fs * 1.35, boxes = pins.map(p => ({ x0: p.x - p.r, y0: p.y - p.r, x1: p.x + p.r, y1: p.y + p.r }));
+  const ov = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  return items.map(it => {
+    const sx = it.w / 2 + fs * 0.6;
+    const cands = [[0, 0], [0, -h], [0, h], [sx, 0], [-sx, 0], [sx, -h], [-sx, -h], [sx, h], [-sx, h], [0, -2 * h], [0, 2 * h], [sx, -2 * h], [-sx, 2 * h]];
+    let best = null, bs = Infinity;
+    for (const [dx, dy] of cands) {
+      const x = it.x + dx, y = it.y + dy;
+      const b = { x0: x - it.w / 2 - 3, x1: x + it.w / 2 + 3, y0: y - h / 2, y1: y + h / 2 };
+      let s = Math.hypot(dx, dy) * 0.02;
+      for (const o of boxes) s += ov(b, o);
+      if (s < bs) { bs = s; best = { x, y, b }; }
+    }
+    boxes.push(best.b);
+    return best;
+  });
+}
 
 // ---------- map ----------
 const svg = d3.select("#map");
@@ -169,14 +223,11 @@ const gMarks = gZoom.append("g");
 let W = 0, H = 0, curK = 1;
 
 const regionSel = gLand.selectAll("path.sgg").data(features).join("path").attr("class", "sgg");
-const sidoPath = gLand.append("path").attr("class", "sido").datum(sidoMesh);
-const coastPath = gLand.append("path").attr("class", "sido").datum(coast);
 
 const zoom = d3.zoom().scaleExtent([1, 40]).on("zoom", e => {
   gZoom.attr("transform", e.transform);
   curK = e.transform.k;
-  gMarks.selectAll("circle.guess").attr("r", 7 / curK);
-  gMarks.selectAll("text.lbl").attr("font-size", 14 / curK).attr("stroke-width", 4 / curK);
+  drawMarks();
 });
 svg.call(zoom).on("dblclick.zoom", null);
 
@@ -186,21 +237,30 @@ function layout() {
   const pad = Math.min(W, H) * 0.05;
   proj.fitExtent([[pad, pad], [W - pad, H - pad]], { type: "FeatureCollection", features });
   regionSel.attr("d", path);
-  sidoPath.attr("d", path); coastPath.attr("d", path);
   zoom.translateExtent([[-W * .5, -H * .5], [W * 1.5, H * 1.5]]);
-  redrawMarks();
+  drawMarks();
 }
 const dur = () => matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 650;
 document.getElementById("zin").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.8);
 document.getElementById("zout").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1 / 1.8);
-document.getElementById("zfit").onclick = () => svg.transition().duration(dur()).call(zoom.transform, d3.zoomIdentity);
+document.getElementById("zfit").onclick = () => phase === "done" ? fitResults() : svg.transition().duration(dur()).call(zoom.transform, d3.zoomIdentity);
 
-function zoomToBox([[x0, y0], [x1, y1]]) {
+function zoomToBox([[x0, y0], [x1, y1]], fill = 0.62) {
   const bw = Math.max(x1 - x0, 20), bh = Math.max(y1 - y0, 20);
-  const k = Math.max(1, Math.min(12, 0.62 / Math.max(bw / W, bh / H)));
+  const k = Math.max(1, Math.min(12, fill / Math.max(bw / W, bh / H)));
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
   svg.transition().duration(dur()).call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-cx, -cy));
 }
+function boundsOf(rs) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const r of rs) {
+    const b = path.bounds(r.f), g = proj(r.guess);
+    x0 = Math.min(x0, b[0][0], g[0]); y0 = Math.min(y0, b[0][1], g[1]);
+    x1 = Math.max(x1, b[1][0], g[0]); y1 = Math.max(y1, b[1][1], g[1]);
+  }
+  return [[x0, y0], [x1, y1]];
+}
+const fitResults = () => zoomToBox(boundsOf(results), 0.8);
 
 // ---------- geometry: distance from a point to a region (km) ----------
 function nearest(feature, [lon, lat]) {
@@ -222,7 +282,7 @@ function nearest(feature, [lon, lat]) {
 const scoreFor = km => km < 0.5 ? 100 : Math.round(100 * Math.exp(-km / K_KM));
 
 // ---------- game state ----------
-let mode = null, queue = [], idx = 0, results = [], guess = null, revealed = false;
+let phase = "idle", mode = null, queue = [], idx = 0, results = [], guess = null, revealed = false;
 
 function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -231,6 +291,8 @@ function pick(pool, n, rand) {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a.slice(0, n);
 }
+const total = () => Math.round(results.reduce((s, r) => s + r.score, 0) / ROUNDS);
+const gradeOf = t => t >= 90 ? "걸어 다니는 지도" : t >= 75 ? "국토 박사" : t >= 55 ? "꽤 아시네요" : t >= 35 ? "어디서 들어본 곳들" : "여행이 필요해요";
 
 const $ = id => document.getElementById(id);
 const action = $("action");
@@ -246,22 +308,31 @@ function renderModes() {
   }
 }
 
+function paintRegions() {
+  const shown = new Map();
+  if (phase === "done") results.forEach(r => shown.set(r.f, bucket(r.score)));
+  else if (revealed) shown.set(results[idx].f, bucket(results[idx].score));
+  regionSel.attr("class", d => "sgg" + (shown.has(d) ? " " + shown.get(d) : ""));
+  regionSel.filter(d => shown.has(d)).raise();
+}
+
 function start(m) {
-  mode = m;
+  mode = m; phase = "play";
   const seed = m.daily ? Number(today().replaceAll("-", "")) : (Math.random() * 2 ** 31) | 0;
   queue = pick(m.pool(), ROUNDS, rng(seed));
   idx = 0; results = [];
-  $("startOv").hidden = true; $("endOv").hidden = true;
+  $("startOv").hidden = true; $("listOv").hidden = true; $("shareOv").hidden = true;
+  $("playRow").hidden = false; $("endRow").hidden = true;
   $("modeName").textContent = "· " + m.name;
+  $("round").className = "round";
   svg.transition().duration(dur()).call(zoom.transform, d3.zoomIdentity);
   nextRound();
 }
 
 function nextRound() {
   guess = null; revealed = false;
-  regionSel.classed("answer", false).classed("miss", false);
-  gMarks.selectAll("*").remove();
-  const f = queue[idx], l = label(f);
+  paintRegions(); drawMarks();
+  const l = label(queue[idx]);
   $("target").innerHTML = (l.pre ? `<small>${l.pre}</small>` : "") + l.name;
   $("round").textContent = `${idx + 1} / ${ROUNDS}`;
   renderPips();
@@ -274,39 +345,49 @@ function renderPips() {
   $("pips").innerHTML = "";
   for (let i = 0; i < ROUNDS; i++) {
     const p = document.createElement("div"), r = results[i];
-    p.className = "pip" + (r ? (r.score >= 80 ? " g" : r.score >= 40 ? " m" : " b") : i === idx ? " now" : "");
+    p.className = "pip" + (r ? " " + bucket(r.score) : (phase === "play" && i === idx) ? " now" : "");
     $("pips").append(p);
   }
 }
 
 svg.on("click", e => {
-  if (!mode || revealed || idx >= ROUNDS) return;
-  const [x, y] = d3.pointer(e, gZoom.node());
-  const ll = proj.invert([x, y]);
+  if (phase !== "play" || revealed) return;
+  const ll = proj.invert(d3.pointer(e, gZoom.node()));
   if (!ll) return;
   guess = ll;
   $("hint").style.opacity = 0;
-  redrawMarks();
+  drawMarks();
   action.disabled = false;
   $("verdict").innerHTML = `<span class="sub">위치를 옮기려면 다시 누르세요</span>`;
 });
 
-function redrawMarks() {
+// Draws pins, dashed links and labels for whatever is visible now. Sizes are divided by zoom so they stay constant on screen.
+function drawMarks() {
   gMarks.selectAll("*").remove();
-  if (!mode || idx >= ROUNDS) return;
-  const f = queue[idx];
-  if (revealed) {
-    const r = results[idx];
-    if (r.km > 0) gMarks.append("path").attr("class", "link").attr("d", `M${proj(r.guess)}L${proj(r.pt)}`);
-    const [cx, cy] = path.centroid(f);
-    gMarks.append("text").attr("class", "lbl").attr("x", cx).attr("y", cy).attr("dy", "0.35em").text(label(f).name);
+  const k = curK, t = d3.zoomTransform(svg.node());
+  const shown = phase === "done" ? results : (phase === "play" && revealed ? [results[idx]] : []);
+  for (const r of shown) {
+    if (r.km > 0) gMarks.append("path").attr("class", "link " + bucket(r.score)).attr("d", `M${proj(r.guess)}L${proj(r.pt)}`);
   }
-  if (guess) {
-    const [gx, gy] = proj(guess);
-    gMarks.append("circle").attr("class", "guess").attr("cx", gx).attr("cy", gy);
+  const pins = shown.map(r => ({ r, p: proj(r.guess) }));
+  if (phase === "play" && !revealed && guess) pins.push({ r: null, p: proj(guess) });
+  for (const { r, p } of pins) {
+    gMarks.append("circle").attr("class", "pin" + (r ? " " + bucket(r.score) : "")).attr("cx", p[0]).attr("cy", p[1]).attr("r", 6.5 / k);
   }
-  gMarks.selectAll("circle.guess").attr("r", 7 / curK);
-  gMarks.selectAll("text.lbl").attr("font-size", 14 / curK).attr("stroke-width", 4 / curK);
+  if (!shown.length) return;
+  const fs = 13;
+  const items = shown.map(r => {
+    const [cx, cy] = t.apply(path.centroid(r.f)), m = measure(label(r.f).name, r.score, fs);
+    return { x: cx, y: cy, w: m.w, m, r };
+  });
+  const spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y, r: 8 }; }), fs);
+  items.forEach((it, i) => {
+    const [x, y] = t.invert([spots[i].x, spots[i].y]);
+    const txt = gMarks.append("text").attr("class", "lbl").attr("x", x).attr("y", y)
+      .attr("font-size", fs / k).attr("stroke-width", 4 / k);
+    txt.append("tspan").text(label(it.r.f).name + " ");
+    txt.append("tspan").attr("class", "s " + bucket(it.r.score)).text(it.r.score);
+  });
 }
 
 function reveal() {
@@ -315,12 +396,9 @@ function reveal() {
   const score = scoreFor(km);
   results[idx] = { f, km, pt, guess, score };
   revealed = true;
-  regionSel.filter(d => d === f).classed("answer", true).classed("miss", km > 0).raise();
-  sidoPath.raise(); coastPath.raise();
-  redrawMarks();
-  const b = path.bounds(f), [gx, gy] = proj(guess);
-  zoomToBox([[Math.min(b[0][0], gx), Math.min(b[0][1], gy)], [Math.max(b[1][0], gx), Math.max(b[1][1], gy)]]);
-  $("verdict").innerHTML = `<span class="pts">+${score}점</span><span class="sub">${km === 0 ? "정확히 안쪽입니다" : `경계까지 ${km < 10 ? km.toFixed(1) : Math.round(km)}km 떨어졌습니다`}</span>`;
+  paintRegions(); drawMarks();
+  zoomToBox(boundsOf([results[idx]]));
+  $("verdict").innerHTML = `<span class="pts">+${score}점</span><span class="sub">${km === 0 ? "정확히 안쪽입니다" : `경계까지 ${fmtKm(km)} 떨어졌습니다`}</span>`;
   renderPips();
   const last = idx === ROUNDS - 1;
   action.textContent = last ? "결과 보기" : "다음 지역";
@@ -328,55 +406,142 @@ function reveal() {
 }
 
 function finish() {
-  const total = Math.round(results.reduce((s, r) => s + r.score, 0) / ROUNDS);
-  $("finalN").textContent = total;
-  $("grade").textContent = total >= 90 ? "걸어 다니는 지도" : total >= 75 ? "국토 박사" : total >= 55 ? "꽤 아시네요" : total >= 35 ? "어디서 들어본 곳들" : "여행이 필요해요";
+  phase = "done";
+  const tt = total();
+  $("target").innerHTML = `${tt}<span class="of">/ 100</span>`;
+  $("round").textContent = gradeOf(tt); $("round").className = "round grade";
+  $("playRow").hidden = true; $("endRow").hidden = false;
+  renderPips(); paintRegions(); drawMarks(); fitResults();
   $("rows").innerHTML = results.map(r => {
     const l = label(r.f);
-    return `<li><span class="nm">${l.pre ? `<small>${l.pre}</small>` : ""}${l.name}</span><span class="km">${r.km === 0 ? "정답" : (r.km < 10 ? r.km.toFixed(1) : Math.round(r.km)) + "km"}</span><span class="p">${r.score}</span></li>`;
+    return `<li><span class="nm">${l.pre ? `<small>${l.pre}</small>` : ""}${l.name}</span><span class="km">${fmtKm(r.km)}</span><span class="p ${bucket(r.score)}">${r.score}</span></li>`;
   }).join("");
-  $("toast").textContent = "";
-  $("endOv").hidden = false;
-  $("verdict").innerHTML = `<span class="pts">${total}점</span><span class="sub">${mode.name} 완료</span>`;
-  action.textContent = "처음으로"; action.className = "btn alt"; action.disabled = false;
-  idx = ROUNDS;
-  if (mode.daily) { try { localStorage.setItem("eodige-daily-" + today(), String(total)); } catch (e) {} }
-  // animate the number
-  const n = $("finalN"), t0 = performance.now(), d = dur() * 1.4;
-  if (d) (function tick(t) { const p = Math.min(1, (t - t0) / d); n.textContent = Math.round(total * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(tick); })(t0);
+  if (mode.daily) { try { localStorage.setItem("eodige-daily-" + today(), String(tt)); } catch (e) {} }
 }
-
-function shareText() {
-  const total = $("finalN").textContent;
-  const sq = results.map(r => r.score >= 80 ? "🟩" : r.score >= 40 ? "🟨" : "🟥").join("");
-  return `어디게 · ${mode.name}${mode.daily ? " " + today() : ""}\n${total}/100\n${sq}`;
-}
-$("share").onclick = () => {
-  const text = shareText();
-  const ok = () => $("toast").textContent = "복사했습니다. 붙여넣어 공유하세요.";
-  try {
-    navigator.clipboard.writeText(text).then(ok, () => { $("toast").textContent = text; });
-  } catch (e) { $("toast").textContent = text; }
-};
-$("again").onclick = () => start(mode.daily ? MODES[1] : mode);
 
 action.onclick = () => {
-  if (idx >= ROUNDS) { $("endOv").hidden = true; $("startOv").hidden = false; mode = null; resetTop(); return; }
+  if (phase !== "play") return;
   if (!revealed) { if (guess) reveal(); return; }
   if (idx === ROUNDS - 1) { finish(); return; }
   idx++; nextRound();
 };
-document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && !action.disabled && document.activeElement === document.body) { e.preventDefault(); action.click(); } });
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && phase === "play" && !action.disabled && document.activeElement === document.body) { e.preventDefault(); action.click(); } });
+
+$("openList").onclick = () => { $("listOv").hidden = false; };
+$("listClose").onclick = () => { $("listOv").hidden = true; };
+$("again").onclick = () => { $("startOv").hidden = false; };
+$("shareClose").onclick = () => { $("shareOv").hidden = true; };
+
+// ---------- share image ----------
+let shotBlob = null;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const shareText = () => `어디게 · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100\n` +
+  results.map(r => ({ g: "🟩", m: "🟨", b: "🟥" })[bucket(r.score)]).join("") + (location.protocol.startsWith("http") ? "\n" + location.href.split("#")[0] : "");
+
+async function makeImage() {
+  try { await document.fonts.ready; } catch (e) {}
+  const CW = 1080, CH = 1350, c = document.createElement("canvas");
+  c.width = CW; c.height = CH;
+  const ctx = c.getContext("2d");
+  const col = { panel: css("--panel"), ink: css("--ink"), muted: css("--muted"), sea: css("--sea"), land: css("--land"), line: css("--line"), accent: css("--accent"),
+    g: css("--hit"), m: css("--mid"), b: css("--accent"), gs: css("--hit-soft"), ms: css("--mid-soft"), bs: css("--accent-soft") };
+  const disp = css("--f-display");
+  ctx.fillStyle = col.panel; ctx.fillRect(0, 0, CW, CH);
+
+  // header
+  ctx.textBaseline = "alphabetic";
+  ctx.font = `48px ${disp}`; ctx.fillStyle = col.ink; ctx.fillText("어디", 60, 100);
+  const w1 = ctx.measureText("어디").width; ctx.fillStyle = col.accent; ctx.fillText("게", 60 + w1, 100);
+  ctx.font = `500 28px ${numFont}`; ctx.fillStyle = col.muted; ctx.textAlign = "right";
+  ctx.fillText(mode.name + (mode.daily ? " · " + today() : ""), CW - 60, 98);
+  ctx.textAlign = "left";
+  const tt = total();
+  ctx.font = `600 132px ${numFont}`; ctx.fillStyle = col.ink; ctx.fillText(String(tt), 52, 250);
+  const w2 = ctx.measureText(String(tt)).width;
+  ctx.font = `500 40px ${numFont}`; ctx.fillStyle = col.muted; ctx.fillText("/ 100", 52 + w2 + 14, 250);
+  ctx.font = `46px ${disp}`; ctx.fillStyle = col.ink; ctx.textAlign = "right"; ctx.fillText(gradeOf(tt), CW - 60, 246); ctx.textAlign = "left";
+
+  // map
+  const mx = 40, my = 290, mw = CW - 80, mh = 900;
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(mx, my, mw, mh, 28) : ctx.rect(mx, my, mw, mh); ctx.clip();
+  ctx.fillStyle = col.sea; ctx.fillRect(mx, my, mw, mh);
+  const target = { type: "FeatureCollection", features: [...results.map(r => r.f), { type: "Feature", geometry: { type: "MultiPoint", coordinates: results.map(r => r.guess) } }] };
+  const p = d3.geoMercator().fitExtent([[mx + 70, my + 70], [mx + mw - 70, my + mh - 70]], target);
+  const gp = d3.geoPath(p, ctx);
+  ctx.beginPath(); features.forEach(f => gp(f)); ctx.fillStyle = col.land; ctx.fill();
+  ctx.beginPath(); gp(allLines); ctx.strokeStyle = col.line; ctx.lineWidth = 1.4; ctx.lineJoin = "round"; ctx.stroke();
+  for (const r of results) {
+    const k = bucket(r.score);
+    ctx.beginPath(); gp(r.f); ctx.fillStyle = col[k + "s"]; ctx.fill(); ctx.strokeStyle = col[k]; ctx.lineWidth = 3; ctx.stroke();
+  }
+  ctx.setLineDash([10, 9]); ctx.lineWidth = 3.5;
+  for (const r of results) if (r.km > 0) {
+    const a = p(r.guess), b = p(r.pt);
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = col[bucket(r.score)]; ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  const pins = results.map(r => { const [x, y] = p(r.guess); return { x, y, r: 16 }; });
+  results.forEach((r, i) => {
+    ctx.beginPath(); ctx.arc(pins[i].x, pins[i].y, 12, 0, Math.PI * 2);
+    ctx.fillStyle = col[bucket(r.score)]; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = col.panel; ctx.stroke();
+  });
+  const fs = 30;
+  const items = results.map(r => { const [x, y] = gp.centroid(r.f), m = measure(label(r.f).name, r.score, fs); return { x, y, w: m.w, m, r }; });
+  const spots = placeLabels(items, pins, fs);
+  ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+  items.forEach((it, i) => {
+    const x0 = spots[i].x - it.w / 2, y = spots[i].y, name = label(it.r.f).name + " ";
+    ctx.lineWidth = 9; ctx.strokeStyle = col.land;
+    ctx.font = `700 ${fs}px ${bodyFont}`; ctx.strokeText(name, x0, y); ctx.fillStyle = col.ink; ctx.fillText(name, x0, y);
+    ctx.font = `600 ${fs}px ${numFont}`; ctx.strokeText(String(it.r.score), x0 + it.m.a, y);
+    ctx.fillStyle = col[bucket(it.r.score)]; ctx.fillText(String(it.r.score), x0 + it.m.a, y);
+  });
+  ctx.restore();
+
+  // footer: one square per round, then the address
+  ctx.textBaseline = "middle";
+  results.forEach((r, i) => {
+    ctx.fillStyle = col[bucket(r.score)];
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(60 + i * 52, 1242, 42, 42, 8) : ctx.rect(60 + i * 52, 1242, 42, 42); ctx.fill();
+  });
+  if (location.protocol.startsWith("http")) {
+    ctx.font = `500 26px ${numFont}`; ctx.fillStyle = col.muted; ctx.textAlign = "right";
+    ctx.fillText(location.host + location.pathname.replace(/index\.html$/, ""), CW - 60, 1263); ctx.textAlign = "left";
+  }
+  return new Promise(res => c.toBlob(res, "image/png"));
+}
+
+$("openShare").onclick = async () => {
+  $("toast").textContent = "";
+  shotBlob = await makeImage();
+  const img = $("shot");
+  if (img.src) URL.revokeObjectURL(img.src);
+  img.src = URL.createObjectURL(shotBlob);
+  const file = new File([shotBlob], "eodige.png", { type: "image/png" });
+  $("shareImg").hidden = !(navigator.canShare && navigator.canShare({ files: [file] }));
+  $("shareOv").hidden = false;
+};
+$("shareImg").onclick = async () => {
+  try { await navigator.share({ files: [new File([shotBlob], "eodige.png", { type: "image/png" })], text: shareText() }); }
+  catch (e) { if (e.name !== "AbortError") $("toast").textContent = "공유하지 못했습니다. 이미지를 길게 눌러 저장해 주세요."; }
+};
+$("saveImg").onclick = () => {
+  const a = document.createElement("a");
+  a.href = $("shot").src; a.download = `eodige-${today()}.png`;
+  document.body.append(a); a.click(); a.remove();
+  $("toast").textContent = "저장이 안 되면 이미지를 길게 누르거나 우클릭해서 저장하세요.";
+};
+$("copyText").onclick = () => {
+  const text = shareText();
+  try { navigator.clipboard.writeText(text).then(() => { $("toast").textContent = "결과 텍스트를 복사했습니다."; }, () => { $("toast").textContent = text; }); }
+  catch (e) { $("toast").textContent = text; }
+};
 
 function resetTop() {
   $("target").innerHTML = "<small>예시</small>부산 중구";
   $("round").textContent = `${ROUNDS}문제`;
-  $("modeName").textContent = "";
-  results = []; idx = 0; renderPips();
-  $("verdict").innerHTML = `<span class="sub">시작할 모드를 고르세요</span>`;
-  action.textContent = "확정"; action.className = "btn"; action.disabled = true;
-  regionSel.classed("answer", false).classed("miss", false);
-  gMarks.selectAll("*").remove();
+  renderPips();
 }
 
 new ResizeObserver(layout).observe(wrap);
