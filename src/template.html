@@ -192,9 +192,11 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 const TOPO = /*TOPO*/null;
 const ROUNDS = 5;
 // Scoring: within GRACE km of the answer region's edge is a full 100; past that the score
-// falls off as 100 * e^(-(d - GRACE) / K). The capital area (서울·인천·경기) is packed with
-// small districts, so it gets a tighter K.
-const GRACE = 2, K_KM = 65, K_METRO = 25;
+// falls off as 100 * e^(-x / K) with x = d - GRACE. The capital area (서울·인천·경기) is packed
+// with small districts, so near misses there lose an extra share (up to about half) that fades
+// out with distance: 50~100 is hard to get, but a far miss scores about the same as elsewhere.
+const GRACE = 2, K_KM = 65;
+const METRO = { A: 0.5, rise: 4, fade: 30 };
 const isMetro = f => ["서울", "인천", "경기"].includes(f.properties.sido);
 
 const features = topojson.feature(TOPO, TOPO.objects.sgg).features;
@@ -316,7 +318,19 @@ function nearest(feature, [lon, lat]) {
   }
   return { km: best, pt: bp };
 }
-const scoreFor = (km, f) => km <= GRACE ? 100 : Math.round(100 * Math.exp(-(km - GRACE) / (isMetro(f) ? K_METRO : K_KM)));
+function scoreFor(km, f) {
+  if (km <= GRACE) return 100;
+  const x = km - GRACE, base = 100 * Math.exp(-x / K_KM);
+  if (!isMetro(f)) return Math.round(base);
+  return Math.round(base * (1 - METRO.A * (1 - Math.exp(-x / METRO.rise)) * Math.exp(-x / METRO.fade)));
+}
+// Easter egg: a 제주 answer tapped off the island scores 0
+const jeju = features.filter(f => f.properties.sido === "제주");
+const offJeju = (f, g) => f.properties.sido === "제주" && Math.min(...jeju.map(j => nearest(j, g).km)) > 30;
+function judge(f, g) {
+  const { km, pt } = nearest(f, g), joke = offJeju(f, g);
+  return { f, km, pt, guess: g, score: joke ? 0 : scoreFor(km, f), joke };
+}
 
 // ---------- game state ----------
 let phase = "idle", mode = null, queue = [], idx = 0, results = [], guess = null, revealed = false;
@@ -377,8 +391,7 @@ function start(m) {
   if (saved && saved.n === ROUNDS) {
     saved.rs.forEach((s, i) => {
       if (!queue[i] || queue[i].id !== s.id) return;
-      const { km, pt } = nearest(queue[i], s.g);
-      results.push({ f: queue[i], km, pt, guess: s.g, score: scoreFor(km, queue[i]) });
+      results.push(judge(queue[i], s.g));
     });
     idx = Math.min(results.length, ROUNDS - 1);
   }
@@ -454,15 +467,12 @@ function drawMarks() {
 }
 
 function reveal() {
-  const f = queue[idx];
-  const { km, pt } = nearest(f, guess);
-  const score = scoreFor(km, f);
-  results[idx] = { f, km, pt, guess, score };
+  const { km, score, joke } = results[idx] = judge(queue[idx], guess);
   revealed = true;
   saveDaily();
   paintRegions(); drawMarks();
   zoomToBox(boundsOf([results[idx]]));
-  $("verdict").innerHTML = `<span class="pts">+${score}점</span><span class="sub">${km === 0 ? "정확히 안쪽입니다" : `경계까지 ${fmtKm(km)} 떨어졌습니다`}</span>`;
+  $("verdict").innerHTML = `<span class="pts">+${score}점</span><span class="sub">${km === 0 ? "정확히 안쪽입니다" : `경계까지 ${fmtKm(km)} 떨어졌습니다${joke ? " · 아 예?" : ""}`}</span>`;
   renderPips();
   const last = idx === ROUNDS - 1;
   action.textContent = last ? "결과 보기" : "다음 지역";
