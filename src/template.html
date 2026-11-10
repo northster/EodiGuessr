@@ -40,6 +40,7 @@ body{background:var(--sea);color:var(--ink);font-family:var(--f-body);font-size:
 .round.dist b{font-weight:600}
 .rows li.sum{border-bottom:0;font-weight:700}
 .target{grid-column:1/-1;font-family:var(--f-display);font-size:clamp(28px,7vw,40px);line-height:1.05;min-height:1.05em;text-wrap:balance}
+.target:empty{display:none}
 .target small{font-family:var(--f-body);font-weight:700;font-size:.5em;color:var(--muted);margin-right:.35em;vertical-align:.18em}
 .target .of{font-family:var(--f-num);font-size:.45em;color:var(--muted);margin-left:.3em}
 .pips{grid-column:1/-1;display:flex;gap:4px;margin-top:4px}
@@ -121,7 +122,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     <div class="overlay" id="startOv">
       <div class="card">
         <h1>어디<b>게서</b></h1>
-        <p>지역 이름이 나오면 지도에서 그 위치를 찍으세요. 10문제를 풀면 거리에 따라 0~100점이 나옵니다.</p>
+        <p>지역 이름이 나오면 지도에서 그 위치를 찍으세요. 6문제를 풀면 거리에 따라 0~100점이 나옵니다.</p>
         <div class="modes" id="modes"></div>
         <div class="foot">경계: 통계청 SGIS 행정동 경계(공공누리 제1유형)를 <a href="https://github.com/vuski/admdongkor" target="_blank" rel="noopener">vuski/admdongkor</a>가 가공한 2026년 10월 기준 자료(CC BY 4.0). 일반구는 시 단위로 합쳤습니다.</div>
       </div>
@@ -163,7 +164,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
 const TOPO = /*TOPO*/null;
-const ROUNDS = 10;
+const ROUNDS = 6;
 const K_KM = 45; // score falloff: 100 * e^(-d / K_KM)
 
 const features = topojson.feature(TOPO, TOPO.objects.sgg).features;
@@ -187,9 +188,9 @@ const fmtKm = km => km === 0 ? "정답" : (km < 10 ? km.toFixed(1) : Math.round(
 const askable = features.filter(f => nameCount.get(f.properties.name) === 1);
 const metroArea = features.filter(f => ["서울", "인천", "경기"].includes(f.properties.sido));
 const MODES = [
-  { id: "daily", name: "오늘의 문제", desc: "모두에게 같은 10곳, 하루 한 번", pool: () => askable, daily: true, primary: true },
-  { id: "all", name: "전국 무작위", desc: `전국 ${askable.length}개 시군구 중 10곳`, pool: () => askable },
-  { id: "hard", name: "어려움", desc: "시군구 경계선 없이 전국 10곳", pool: () => askable, hard: true },
+  { id: "daily", name: "오늘의 문제", desc: `모두에게 같은 ${ROUNDS}곳, 하루 한 번`, pool: () => askable, daily: true, primary: true },
+  { id: "all", name: "전국 무작위", desc: `전국 ${askable.length}개 시군구 중 ${ROUNDS}곳`, pool: () => askable },
+  { id: "hard", name: "어려움", desc: `시군구 경계선 없이 전국 ${ROUNDS}곳`, pool: () => askable, hard: true },
   { id: "metro", name: "수도권", desc: "서울 · 인천 · 경기만", pool: () => askable.filter(f => metroArea.includes(f)), area: metroArea },
 ];
 
@@ -388,9 +389,10 @@ function drawMarks() {
   if (phase === "play" && !revealed && guess) pins.push({ c: null, p: proj(guess) });
   for (const { c, p } of pins) gMarks.append("circle").attr("class", "pin").style("fill", c).attr("cx", p[0]).attr("cy", p[1]).attr("r", 6 / k);
   if (!shown.length) return;
-  // the answer's name sits on the answer region, nudged off pins and other names
+  // while playing, the answer's name sits on the answer region; on the result screen it sits by your pin.
+  // Either way it is nudged off pins and other names.
   const fs = 13;
-  const items = shown.map(r => { const [x, y] = t.apply(path.centroid(r.f)); return { x, y, w: measure(label(r.f).name, fs), r }; });
+  const items = shown.map(r => { const [x, y] = t.apply(phase === "done" ? proj(r.guess) : path.centroid(r.f)); return { x, y, w: measure(label(r.f).name, fs), r }; });
   const spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y, r: 8 }; }), fs);
   items.forEach((it, i) => {
     const [x, y] = t.invert([spots[i].x, spots[i].y]);
@@ -497,7 +499,7 @@ async function makeImage() {
     ctx.fillStyle = heat(r); ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = col.panel; ctx.stroke();
   });
   const fs = 30;
-  const items = results.map(r => { const [x, y] = gp.centroid(r.f); return { x, y, w: measure(label(r.f).name, fs), r }; });
+  const items = results.map(r => { const [x, y] = p(r.guess); return { x, y, w: measure(label(r.f).name, fs), r }; });
   const spots = placeLabels(items, pins, fs);
   ctx.textBaseline = "middle"; ctx.textAlign = "center"; ctx.lineJoin = "round";
   items.forEach((it, i) => {
@@ -548,7 +550,7 @@ $("copyText").onclick = () => {
 };
 
 function resetTop() {
-  $("target").innerHTML = "<small>예시</small>안동시";
+  $("target").innerHTML = "";
   $("round").textContent = `${ROUNDS}문제`; $("round").className = "round";
   $("modeName").textContent = "";
   renderPips();
