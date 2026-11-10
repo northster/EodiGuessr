@@ -28,3 +28,7 @@ npx mapshaper tagged.json -dissolve key copy-fields=sido,name name=sgg \
 ## 출처
 
 경계 데이터: 통계청 SGIS 행정동 경계(공공누리 제1유형), vuski/admdongkor 가공(CC BY 4.0).
+
+## 링크 미리보기
+
+`og.png`(1200×630)가 링크를 공유할 때 뜨는 미리보기 이미지입니다. 미리보기 문구와 주소는 `src/build.js`의 `SITE`, `DESC`에서 바꿉니다.
