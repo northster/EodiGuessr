@@ -1,4 +1,4 @@
-<title>어디게서</title>
+<title>EodiGuessr</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
@@ -106,7 +106,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 <div class="app">
   <header class="bar top">
-    <div class="brand"><span>어디<b>게서</b></span><span id="modeName"></span></div>
+    <div class="brand"><span>Eodi<b>Guessr</b></span><span id="modeName"></span></div>
     <div class="round" id="round"></div>
     <div class="target" id="target" aria-live="polite"></div>
     <div class="pips" id="pips"></div>
@@ -121,8 +121,8 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     </div>
     <div class="overlay" id="startOv">
       <div class="card">
-        <h1>어디<b>게서</b></h1>
-        <p>지역 이름이 나오면 지도에서 그 위치를 찍으세요. 6문제를 풀면 거리에 따라 0~100점이 나옵니다.</p>
+        <h1>Eodi<b>Guessr</b></h1>
+        <p>지역 이름이 나오면 지도에서 그 위치를 찍으세요. 5문제를 풀면 거리에 따라 0~100점이 나옵니다.</p>
         <div class="modes" id="modes"></div>
         <div class="foot">경계: 통계청 SGIS 행정동 경계(공공누리 제1유형)를 <a href="https://github.com/vuski/admdongkor" target="_blank" rel="noopener">vuski/admdongkor</a>가 가공한 2026년 10월 기준 자료(CC BY 4.0). 일반구는 시 단위로 합쳤습니다.</div>
       </div>
@@ -164,7 +164,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
 const TOPO = /*TOPO*/null;
-const ROUNDS = 6;
+const ROUNDS = 5;
 const K_KM = 45; // score falloff: 100 * e^(-d / K_KM)
 
 const features = topojson.feature(TOPO, TOPO.objects.sgg).features;
@@ -306,12 +306,22 @@ const fmtSum = () => Math.round(sumKm()).toLocaleString("ko-KR") + "km";
 const $ = id => document.getElementById(id);
 const action = $("action");
 
+const dailyKey = () => "eodiguessr-daily-" + today();
+function loadDaily() { try { return JSON.parse(localStorage.getItem(dailyKey())); } catch (e) { return null; } }
+function saveDaily() {
+  if (!mode || !mode.daily) return;
+  try { localStorage.setItem(dailyKey(), JSON.stringify({ n: ROUNDS, rs: results.map(r => ({ id: r.f.id, g: r.guess })) })); } catch (e) {}
+}
 function renderModes() {
   $("modes").innerHTML = "";
   for (const m of MODES) {
     const b = document.createElement("button");
     b.className = "mode" + (m.primary ? " primary" : "");
-    b.innerHTML = `<strong>${m.name}</strong><span>${m.desc}</span><em>${m.daily ? today().slice(5).replace("-", ".") : m.pool().length + "곳"}</em>`;
+    let desc = m.desc, tag = m.daily ? today().slice(5).replace("-", ".") : m.pool().length + "곳";
+    const d = m.daily && loadDaily();
+    if (d && d.rs.length >= ROUNDS) { desc = "오늘은 완료했어요 · 결과 보기"; tag = "완료"; }
+    else if (d && d.rs.length) { desc = `이어서 풀기 (${d.rs.length}/${ROUNDS})`; }
+    b.innerHTML = `<strong>${m.name}</strong><span>${desc}</span><em>${tag}</em>`;
     b.onclick = () => start(m);
     $("modes").append(b);
   }
@@ -333,6 +343,16 @@ function start(m) {
   const seed = m.daily ? Number(today().replaceAll("-", "")) : (Math.random() * 2 ** 31) | 0;
   queue = pick(m.pool(), ROUNDS, rng(seed));
   idx = 0; results = [];
+  // the daily set can be played once: restore what was already answered today
+  const saved = m.daily && loadDaily();
+  if (saved && saved.n === ROUNDS) {
+    saved.rs.forEach((s, i) => {
+      if (!queue[i] || queue[i].id !== s.id) return;
+      const { km, pt } = nearest(queue[i], s.g);
+      results.push({ f: queue[i], km, pt, guess: s.g, score: scoreFor(km) });
+    });
+    idx = Math.min(results.length, ROUNDS - 1);
+  }
   $("startOv").hidden = true; $("listOv").hidden = true; $("shareOv").hidden = true;
   $("playRow").hidden = false; $("endRow").hidden = true;
   $("modeName").textContent = "· " + m.name;
@@ -340,7 +360,7 @@ function start(m) {
   viewFeatures = m.area || features;
   svg.interrupt().call(zoom.transform, d3.zoomIdentity);
   layout();
-  nextRound();
+  if (results.length >= ROUNDS) finish(); else nextRound();
 }
 
 function nextRound() {
@@ -385,19 +405,24 @@ function drawMarks() {
   for (const r of shown) {
     if (r.km > 0) gMarks.append("path").attr("class", "link" + dash).style("stroke", heat(r)).attr("d", `M${proj(r.guess)}L${proj(r.pt)}`);
   }
-  const pins = shown.map(r => ({ c: heat(r), p: proj(r.guess) }));
+  // while playing: pins, and the answer's name on the answer region (nudged off pins and other names)
+  // on the result screen: no pins; the answer's name is written on the tap point and the line leaves from it
+  const done = phase === "done";
+  const pins = done ? [] : shown.map(r => ({ c: heat(r), p: proj(r.guess) }));
   if (phase === "play" && !revealed && guess) pins.push({ c: null, p: proj(guess) });
   for (const { c, p } of pins) gMarks.append("circle").attr("class", "pin").style("fill", c).attr("cx", p[0]).attr("cy", p[1]).attr("r", 6 / k);
   if (!shown.length) return;
-  // while playing, the answer's name sits on the answer region; on the result screen it sits by your pin.
-  // Either way it is nudged off pins and other names.
   const fs = 13;
-  const items = shown.map(r => { const [x, y] = t.apply(phase === "done" ? proj(r.guess) : path.centroid(r.f)); return { x, y, w: measure(label(r.f).name, fs), r }; });
-  const spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y, r: 8 }; }), fs);
-  items.forEach((it, i) => {
+  let spots;
+  if (done) spots = shown.map(r => { const [x, y] = t.apply(proj(r.guess)); return { x, y }; });
+  else {
+    const items = shown.map(r => { const [x, y] = t.apply(path.centroid(r.f)); return { x, y, w: measure(label(r.f).name, fs) }; });
+    spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y, r: 8 }; }), fs);
+  }
+  shown.forEach((r, i) => {
     const [x, y] = t.invert([spots[i].x, spots[i].y]);
     gMarks.append("text").attr("class", "lbl").attr("x", x).attr("y", y)
-      .attr("font-size", fs / k).attr("stroke-width", 4 / k).text(label(it.r.f).name);
+      .attr("font-size", fs / k).attr("stroke-width", 5 / k).text(label(r.f).name);
   });
 }
 
@@ -407,6 +432,7 @@ function reveal() {
   const score = scoreFor(km);
   results[idx] = { f, km, pt, guess, score };
   revealed = true;
+  saveDaily();
   paintRegions(); drawMarks();
   zoomToBox(boundsOf([results[idx]]));
   $("verdict").innerHTML = `<span class="pts">+${score}점</span><span class="sub">${km === 0 ? "정확히 안쪽입니다" : `경계까지 ${fmtKm(km)} 떨어졌습니다`}</span>`;
@@ -427,7 +453,6 @@ function finish() {
     const l = label(r.f);
     return `<li><span class="nm">${l.pre ? `<small>${l.pre}</small>` : ""}${l.name}</span><span class="km">${fmtKm(r.km)}</span><span class="p" style="color:${heat(r)}">${r.score}</span></li>`;
   }).join("") + `<li class="sum"><span class="nm">합계</span><span class="km">${fmtSum()}</span><span class="p">${tt}</span></li>`;
-  if (mode.daily) { try { localStorage.setItem("eodige-daily-" + today(), String(tt)); } catch (e) {} }
 }
 
 action.onclick = () => {
@@ -445,7 +470,7 @@ $("shareClose").onclick = () => { $("shareOv").hidden = true; };
 
 // ---------- share image ----------
 let shotBlob = null;
-const shareText = () => `어디게서 · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100 · 총 오차 ${fmtSum()}\n` +
+const shareText = () => `EodiGuessr · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100 · 총 오차 ${fmtSum()}\n` +
   results.map(emoji).join("") + (location.protocol.startsWith("http") ? "\n" + location.href.split("#")[0] : "");
 
 async function makeImage() {
@@ -459,8 +484,8 @@ async function makeImage() {
 
   // header
   ctx.textBaseline = "alphabetic";
-  ctx.font = `48px ${disp}`; ctx.fillStyle = col.ink; ctx.fillText("어디", 60, 100);
-  const w1 = ctx.measureText("어디").width; ctx.fillStyle = col.accent; ctx.fillText("게서", 60 + w1, 100);
+  ctx.font = `48px ${disp}`; ctx.fillStyle = col.ink; ctx.fillText("Eodi", 60, 100);
+  const w1 = ctx.measureText("Eodi").width; ctx.fillStyle = col.accent; ctx.fillText("Guessr", 60 + w1, 100);
   ctx.font = `500 28px ${numFont}`; ctx.fillStyle = col.muted; ctx.textAlign = "right";
   ctx.fillText(mode.name + (mode.daily ? " · " + today() : ""), CW - 60, 98);
   ctx.textAlign = "left";
@@ -493,17 +518,10 @@ async function makeImage() {
     ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = heat(r); ctx.stroke();
   }
   ctx.globalAlpha = 1;
-  const pins = results.map(r => { const [x, y] = p(r.guess); return { x, y, r: 14 }; });
-  results.forEach((r, i) => {
-    ctx.beginPath(); ctx.arc(pins[i].x, pins[i].y, 10, 0, Math.PI * 2);
-    ctx.fillStyle = heat(r); ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = col.panel; ctx.stroke();
-  });
   const fs = 30;
-  const items = results.map(r => { const [x, y] = p(r.guess); return { x, y, w: measure(label(r.f).name, fs), r }; });
-  const spots = placeLabels(items, pins, fs);
   ctx.textBaseline = "middle"; ctx.textAlign = "center"; ctx.lineJoin = "round";
-  items.forEach((it, i) => {
-    const x0 = spots[i].x, y = spots[i].y, name = label(it.r.f).name;
+  results.forEach(r => {
+    const [x0, y] = p(r.guess), name = label(r.f).name;
     ctx.lineWidth = 9; ctx.strokeStyle = col.land;
     ctx.font = `700 ${fs}px ${bodyFont}`; ctx.strokeText(name, x0, y); ctx.fillStyle = col.ink; ctx.fillText(name, x0, y);
   });
@@ -529,17 +547,17 @@ $("openShare").onclick = async () => {
   const img = $("shot");
   if (img.src) URL.revokeObjectURL(img.src);
   img.src = URL.createObjectURL(shotBlob);
-  const file = new File([shotBlob], "eodigeseo.png", { type: "image/png" });
+  const file = new File([shotBlob], "eodiguessr.png", { type: "image/png" });
   $("shareImg").hidden = !(navigator.canShare && navigator.canShare({ files: [file] }));
   $("shareOv").hidden = false;
 };
 $("shareImg").onclick = async () => {
-  try { await navigator.share({ files: [new File([shotBlob], "eodigeseo.png", { type: "image/png" })], text: shareText() }); }
+  try { await navigator.share({ files: [new File([shotBlob], "eodiguessr.png", { type: "image/png" })], text: shareText() }); }
   catch (e) { if (e.name !== "AbortError") $("toast").textContent = "공유하지 못했습니다. 이미지를 길게 눌러 저장해 주세요."; }
 };
 $("saveImg").onclick = () => {
   const a = document.createElement("a");
-  a.href = $("shot").src; a.download = `eodigeseo-${today()}.png`;
+  a.href = $("shot").src; a.download = `eodiguessr-${today()}.png`;
   document.body.append(a); a.click(); a.remove();
   $("toast").textContent = "저장이 안 되면 이미지를 길게 누르거나 우클릭해서 저장하세요.";
 };
@@ -563,7 +581,7 @@ function goHome() {
   $("playRow").hidden = false; $("startOv").hidden = false;
   viewFeatures = features;
   svg.interrupt().call(zoom.transform, d3.zoomIdentity);
-  layout(); paintRegions(); resetTop();
+  layout(); paintRegions(); resetTop(); renderModes();
 }
 
 new ResizeObserver(layout).observe(wrap);
