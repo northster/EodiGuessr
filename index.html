@@ -134,7 +134,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   </header>
   <main class="mapwrap" id="mapwrap">
     <svg id="map" role="img" aria-label="대한민국 시군구 지도"></svg>
-    <div class="hint" id="hint">지도를 눌러 위치를 찍으세요 · 두 손가락으로 확대</div>
+    <div class="hint" id="hint" hidden>지도를 눌러 위치를 찍으세요 · 두 손가락으로 확대</div>
     <div class="zoom">
       <button id="zin" aria-label="확대">+</button>
       <button id="zout" aria-label="축소">−</button>
@@ -390,6 +390,7 @@ function nextRound() {
   const l = label(queue[idx]);
   $("target").innerHTML = (l.pre ? `<small>${l.pre}</small>` : "") + l.name;
   $("round").textContent = `${idx + 1} / ${ROUNDS}`;
+  $("hint").hidden = !(idx === 0 && !results.length); // only before the first tap of a game
   renderPips();
   $("verdict").innerHTML = `<span class="sub">지도를 눌러 위치를 찍으세요</span>`;
   action.textContent = "확정"; action.className = "btn"; action.disabled = true;
@@ -411,7 +412,7 @@ svg.on("click", e => {
   const ll = proj.invert(d3.pointer(e, gZoom.node()));
   if (!ll) return;
   guess = ll;
-  $("hint").style.opacity = 0;
+  $("hint").hidden = true;
   drawMarks();
   action.disabled = false;
   $("verdict").innerHTML = `<span class="sub">위치를 옮기려면 다시 누르세요</span>`;
@@ -461,6 +462,7 @@ function reveal() {
 
 function finish() {
   phase = "done";
+  $("hint").hidden = true;
   const tt = total();
   $("target").innerHTML = `${tt}<span class="of">/ 100</span>`;
   $("round").innerHTML = `총 오차 <b>${fmtSum()}</b>`; $("round").className = "round dist";
