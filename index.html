@@ -60,7 +60,7 @@ svg{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;user
 .sgg{fill:var(--land);stroke:var(--line);stroke-width:.7px;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 .bare .sgg{stroke:var(--land)}
 .sgg.ans{stroke-width:1.6px}
-.pin{stroke:var(--panel);vector-effect:non-scaling-stroke;stroke-width:2px;fill:var(--ink)}
+.pin{stroke:var(--panel);vector-effect:non-scaling-stroke;stroke-width:1.5px;stroke-linejoin:round;fill:var(--ink)}
 .link{stroke-width:1.1px;stroke-opacity:.5;stroke-linecap:round;vector-effect:non-scaling-stroke;fill:none;stroke:var(--ink)}
 .link.dash{stroke-opacity:1;stroke-width:1.6px;stroke-dasharray:4 4}
 .lbl{font-family:var(--f-body);font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-linejoin:round;text-anchor:middle;dominant-baseline:central;pointer-events:none}
@@ -404,6 +404,7 @@ svg.on("click", e => {
   $("verdict").innerHTML = `<span class="sub">위치를 옮기려면 다시 누르세요</span>`;
 });
 
+const TRI = "M0,0L-7,-13L7,-13Z"; // marker shape in screen pixels, tip at the tap point
 // Draws pins, lines and labels for whatever is visible now. Sizes are divided by zoom so they stay constant on screen.
 function drawMarks() {
   gMarks.selectAll("*").remove();
@@ -413,24 +414,22 @@ function drawMarks() {
   for (const r of shown) {
     if (r.km > 0) gMarks.append("path").attr("class", "link" + dash).style("stroke", heat(r)).attr("d", `M${proj(r.guess)}L${proj(r.pt)}`);
   }
-  // while playing: pins, and the answer's name on the answer region (nudged off pins and other names)
-  // on the result screen: no pins; the answer's name is written on the tap point and the line leaves from it
-  const done = phase === "done";
-  const pins = done ? [] : shown.map(r => ({ c: heat(r), p: proj(r.guess) }));
+  // A down-pointing triangle marks each tap; its tip is the exact spot. The answer's name sits on the answer region,
+  // nudged off markers and other names.
+  const pins = shown.map(r => ({ c: heat(r), p: proj(r.guess) }));
   if (phase === "play" && !revealed && guess) pins.push({ c: null, p: proj(guess) });
-  for (const { c, p } of pins) gMarks.append("circle").attr("class", "pin").style("fill", c).attr("cx", p[0]).attr("cy", p[1]).attr("r", 6 / k);
+  for (const { c, p } of pins) {
+    gMarks.append("path").attr("class", "pin").style("fill", c)
+      .attr("transform", `translate(${p[0]},${p[1]}) scale(${1 / k})`).attr("d", TRI);
+  }
   if (!shown.length) return;
   const fs = 13;
-  let spots;
-  if (done) spots = shown.map(r => { const [x, y] = t.apply(proj(r.guess)); return { x, y }; });
-  else {
-    const items = shown.map(r => { const [x, y] = t.apply(path.centroid(r.f)); return { x, y, w: measure(label(r.f).name, fs) }; });
-    spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y, r: 8 }; }), fs);
-  }
+  const items = shown.map(r => { const [x, y] = t.apply(path.centroid(r.f)); return { x, y, w: measure(label(r.f).name, fs) }; });
+  const spots = placeLabels(items, pins.map(({ p }) => { const [x, y] = t.apply(p); return { x, y: y - 7, r: 9 }; }), fs);
   shown.forEach((r, i) => {
     const [x, y] = t.invert([spots[i].x, spots[i].y]);
     gMarks.append("text").attr("class", "lbl").attr("x", x).attr("y", y)
-      .attr("font-size", fs / k).attr("stroke-width", 5 / k).text(label(r.f).name);
+      .attr("font-size", fs / k).attr("stroke-width", 4 / k).text(label(r.f).name);
   });
 }
 
@@ -526,10 +525,19 @@ async function makeImage() {
     ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = heat(r); ctx.stroke();
   }
   ctx.globalAlpha = 1;
+  const pins = results.map(r => { const [x, y] = p(r.guess); return { x, y: y - 14, r: 18 }; });
+  ctx.lineJoin = "round";
+  results.forEach((r, i) => {
+    const x = pins[i].x, y = pins[i].y + 14;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 14, y - 26); ctx.lineTo(x + 14, y - 26); ctx.closePath();
+    ctx.fillStyle = heat(r); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = col.panel; ctx.stroke();
+  });
   const fs = 30;
-  ctx.textBaseline = "middle"; ctx.textAlign = "center"; ctx.lineJoin = "round";
-  results.forEach(r => {
-    const [x0, y] = p(r.guess), name = label(r.f).name;
+  const items = results.map(r => { const [x, y] = gp.centroid(r.f); return { x, y, w: measure(label(r.f).name, fs) }; });
+  const spots = placeLabels(items, pins, fs);
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  results.forEach((r, i) => {
+    const x0 = spots[i].x, y = spots[i].y, name = label(r.f).name;
     ctx.lineWidth = 9; ctx.strokeStyle = col.land;
     ctx.font = `700 ${fs}px ${bodyFont}`; ctx.strokeText(name, x0, y); ctx.fillStyle = col.ink; ctx.fillText(name, x0, y);
   });
