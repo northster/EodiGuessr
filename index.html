@@ -6,7 +6,7 @@
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
-<title>어디게 시군구</title>
+<title>어디게서</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
@@ -17,7 +17,7 @@
   --ink:#16232b; --muted:#5a6a74; --panel:#ffffff; --panel-2:#eef2f5;
   --accent:#d7381d; --accent-soft:rgba(215,56,29,.18);
   --hit:#1d8656; --hit-soft:rgba(29,134,86,.24);
-  --mid:#c08a0c; --mid-soft:rgba(214,163,23,.26);
+  --mid:#d9a90d; --orange:#e2711d;
   --shadow:0 6px 24px rgba(22,35,43,.14);
   --f-display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
   --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
@@ -27,13 +27,13 @@
   --sea:#0d171d; --land:#1c2a32; --line:#344853; --border:#7b939f;
   --ink:#e7eef2; --muted:#98a9b2; --panel:#14212a; --panel-2:#1e2e38;
   --accent:#ff6748; --accent-soft:rgba(255,103,72,.24); --hit:#3cc48c; --hit-soft:rgba(60,196,140,.26);
-  --mid:#e8b83c; --mid-soft:rgba(232,184,60,.24);
+  --mid:#e8c03c; --orange:#f08a3a;
   --shadow:0 6px 28px rgba(0,0,0,.5); color-scheme:dark}}
 :root[data-theme="dark"]{
   --sea:#0d171d; --land:#1c2a32; --line:#344853; --border:#7b939f;
   --ink:#e7eef2; --muted:#98a9b2; --panel:#14212a; --panel-2:#1e2e38;
   --accent:#ff6748; --accent-soft:rgba(255,103,72,.24); --hit:#3cc48c; --hit-soft:rgba(60,196,140,.26);
-  --mid:#e8b83c; --mid-soft:rgba(232,184,60,.24);
+  --mid:#e8c03c; --orange:#f08a3a;
   --shadow:0 6px 28px rgba(0,0,0,.5); color-scheme:dark}
 
 html,body{height:100%}
@@ -53,20 +53,15 @@ body{background:var(--sea);color:var(--ink);font-family:var(--f-body);font-size:
 .pips{grid-column:1/-1;display:flex;gap:4px;margin-top:4px}
 .pip{flex:1;height:4px;border-radius:2px;background:var(--panel-2)}
 .pip.now{background:var(--muted)}
-.pip.g{background:var(--hit)} .pip.m{background:var(--mid)} .pip.b{background:var(--accent)}
 
 .mapwrap{position:relative;flex:1;min-height:0}
 svg{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none}
 .sgg{fill:var(--land);stroke:var(--line);stroke-width:.7px;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 .bare .sgg{stroke:var(--land)}
-.sgg.g{fill:var(--hit-soft);stroke:var(--hit);stroke-width:1.6px}
-.sgg.m{fill:var(--mid-soft);stroke:var(--mid);stroke-width:1.6px}
-.sgg.b{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.6px}
+.sgg.ans{stroke-width:1.6px}
 .pin{stroke:var(--panel);vector-effect:non-scaling-stroke;stroke-width:2px;fill:var(--ink)}
-.pin.g{fill:var(--hit)} .pin.m{fill:var(--mid)} .pin.b{fill:var(--accent)}
 .link{stroke-width:1.1px;stroke-opacity:.5;stroke-linecap:round;vector-effect:non-scaling-stroke;fill:none;stroke:var(--ink)}
 .link.dash{stroke-opacity:1;stroke-width:1.6px;stroke-dasharray:4 4}
-.link.g{stroke:var(--hit)} .link.m{stroke:var(--mid)} .link.b{stroke:var(--accent)}
 .lbl{font-family:var(--f-body);font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-linejoin:round;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 
 .zoom{position:absolute;right:max(12px,env(safe-area-inset-right,0px));bottom:12px;display:flex;flex-direction:column;gap:6px}
@@ -107,7 +102,6 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .rows li{display:grid;grid-template-columns:1fr auto 3.2em;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px;align-items:center}
 .rows .km{font-family:var(--f-num);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .rows .p{font-family:var(--f-num);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
-.rows .p.g{color:var(--hit)} .rows .p.m{color:var(--mid)} .rows .p.b{color:var(--accent)}
 .rows .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rows .nm small{color:var(--muted);margin-right:4px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -119,7 +113,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 <div class="app">
   <header class="bar top">
-    <div class="brand"><span>어디<b>게</b></span><span id="modeName"></span></div>
+    <div class="brand"><span>어디<b>게서</b></span><span id="modeName"></span></div>
     <div class="round" id="round"></div>
     <div class="target" id="target" aria-live="polite"></div>
     <div class="pips" id="pips"></div>
@@ -134,7 +128,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
     </div>
     <div class="overlay" id="startOv">
       <div class="card">
-        <h1>어디<b>게</b></h1>
+        <h1>어디<b>게서</b></h1>
         <p>지역 이름이 나오면 지도에서 그 위치를 찍으세요. 10문제를 풀면 거리에 따라 0~100점이 나옵니다.</p>
         <div class="modes" id="modes"></div>
         <div class="foot">경계: 통계청 SGIS 행정동 경계(공공누리 제1유형)를 <a href="https://github.com/vuski/admdongkor" target="_blank" rel="noopener">vuski/admdongkor</a>가 가공한 2026년 10월 기준 자료(CC BY 4.0). 일반구는 시 단위로 합쳤습니다.</div>
@@ -185,7 +179,16 @@ features.forEach((f, i) => { f.id = i; });
 const nameCount = d3.rollup(features, v => v.length, f => f.properties.name);
 const label = f => f.properties.sido === "세종" ? { pre: "", name: "세종시" }
   : { pre: nameCount.get(f.properties.name) > 1 ? f.properties.sido : "", name: f.properties.name };
-const bucket = s => s >= 80 ? "g" : s >= 40 ? "m" : "b";
+// Color by miss distance: green when the score is 80+ (about 10km or closer),
+// then yellow → orange → red on a log scale from 10km to 150km.
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const missT = r => Math.max(0, Math.min(1, Math.log(Math.max(r.km, 10) / 10) / Math.log(15)));
+function heat(r) {
+  if (r.score >= 80) return css("--hit");
+  return d3.interpolateRgbBasis([css("--mid"), css("--orange"), css("--accent")])(missT(r));
+}
+const soft = (c, a = 0.26) => { const x = d3.color(c); x.opacity = a; return x.formatRgb(); };
+const emoji = r => r.score >= 80 ? "🟩" : missT(r) < 0.34 ? "🟨" : missT(r) < 0.67 ? "🟧" : "🟥";
 const fmtKm = km => km === 0 ? "정답" : (km < 10 ? km.toFixed(1) : Math.round(km)) + "km";
 
 // Names used in more than one 시도 (중구, 동구, 고성군 …) are never asked.
@@ -323,9 +326,11 @@ function renderModes() {
 
 function paintRegions() {
   const shown = new Map();
-  if (phase === "done") results.forEach(r => shown.set(r.f, bucket(r.score)));
-  else if (revealed) shown.set(results[idx].f, bucket(results[idx].score));
-  regionSel.attr("class", d => "sgg" + (shown.has(d) ? " " + shown.get(d) : ""));
+  if (phase === "done") results.forEach(r => shown.set(r.f, heat(r)));
+  else if (revealed) shown.set(results[idx].f, heat(results[idx]));
+  regionSel.attr("class", d => "sgg" + (shown.has(d) ? " ans" : ""))
+    .style("fill", d => shown.has(d) ? soft(shown.get(d)) : null)
+    .style("stroke", d => shown.has(d) ? shown.get(d) : null);
   regionSel.filter(d => shown.has(d)).raise();
   svg.classed("bare", phase === "done" || (phase === "play" && mode && mode.hard));
 }
@@ -361,7 +366,8 @@ function renderPips() {
   $("pips").innerHTML = "";
   for (let i = 0; i < ROUNDS; i++) {
     const p = document.createElement("div"), r = results[i];
-    p.className = "pip" + (r ? " " + bucket(r.score) : (phase === "play" && i === idx) ? " now" : "");
+    p.className = "pip" + (!r && phase === "play" && i === idx ? " now" : "");
+    if (r) p.style.background = heat(r);
     $("pips").append(p);
   }
 }
@@ -384,11 +390,11 @@ function drawMarks() {
   const shown = phase === "done" ? results : (phase === "play" && revealed ? [results[idx]] : []);
   const dash = phase === "play" ? " dash" : "";
   for (const r of shown) {
-    if (r.km > 0) gMarks.append("path").attr("class", "link " + bucket(r.score) + dash).attr("d", `M${proj(r.guess)}L${proj(r.pt)}`);
+    if (r.km > 0) gMarks.append("path").attr("class", "link" + dash).style("stroke", heat(r)).attr("d", `M${proj(r.guess)}L${proj(r.pt)}`);
   }
-  const pins = shown.map(r => ({ cls: "pin " + bucket(r.score), p: proj(r.guess) }));
-  if (phase === "play" && !revealed && guess) pins.push({ cls: "pin", p: proj(guess) });
-  for (const { cls, p } of pins) gMarks.append("circle").attr("class", cls).attr("cx", p[0]).attr("cy", p[1]).attr("r", 6 / k);
+  const pins = shown.map(r => ({ c: heat(r), p: proj(r.guess) }));
+  if (phase === "play" && !revealed && guess) pins.push({ c: null, p: proj(guess) });
+  for (const { c, p } of pins) gMarks.append("circle").attr("class", "pin").style("fill", c).attr("cx", p[0]).attr("cy", p[1]).attr("r", 6 / k);
   if (!shown.length) return;
   // the answer's name sits on the answer region, nudged off pins and other names
   const fs = 13;
@@ -425,7 +431,7 @@ function finish() {
   renderPips(); paintRegions(); drawMarks(); fitResults();
   $("rows").innerHTML = results.map(r => {
     const l = label(r.f);
-    return `<li><span class="nm">${l.pre ? `<small>${l.pre}</small>` : ""}${l.name}</span><span class="km">${fmtKm(r.km)}</span><span class="p ${bucket(r.score)}">${r.score}</span></li>`;
+    return `<li><span class="nm">${l.pre ? `<small>${l.pre}</small>` : ""}${l.name}</span><span class="km">${fmtKm(r.km)}</span><span class="p" style="color:${heat(r)}">${r.score}</span></li>`;
   }).join("") + `<li class="sum"><span class="nm">합계</span><span class="km">${fmtSum()}</span><span class="p">${tt}</span></li>`;
   if (mode.daily) { try { localStorage.setItem("eodige-daily-" + today(), String(tt)); } catch (e) {} }
 }
@@ -445,24 +451,22 @@ $("shareClose").onclick = () => { $("shareOv").hidden = true; };
 
 // ---------- share image ----------
 let shotBlob = null;
-const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const shareText = () => `어디게 · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100 · 총 오차 ${fmtSum()}\n` +
-  results.map(r => ({ g: "🟩", m: "🟨", b: "🟥" })[bucket(r.score)]).join("") + (location.protocol.startsWith("http") ? "\n" + location.href.split("#")[0] : "");
+const shareText = () => `어디게서 · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100 · 총 오차 ${fmtSum()}\n` +
+  results.map(emoji).join("") + (location.protocol.startsWith("http") ? "\n" + location.href.split("#")[0] : "");
 
 async function makeImage() {
   try { await document.fonts.ready; } catch (e) {}
   const CW = 1080, CH = 1350, c = document.createElement("canvas");
   c.width = CW; c.height = CH;
   const ctx = c.getContext("2d");
-  const col = { panel: css("--panel"), ink: css("--ink"), muted: css("--muted"), sea: css("--sea"), land: css("--land"), line: css("--line"), accent: css("--accent"),
-    g: css("--hit"), m: css("--mid"), b: css("--accent"), gs: css("--hit-soft"), ms: css("--mid-soft"), bs: css("--accent-soft") };
+  const col = { panel: css("--panel"), ink: css("--ink"), muted: css("--muted"), sea: css("--sea"), land: css("--land"), line: css("--line"), accent: css("--accent") };
   const disp = css("--f-display");
   ctx.fillStyle = col.panel; ctx.fillRect(0, 0, CW, CH);
 
   // header
   ctx.textBaseline = "alphabetic";
   ctx.font = `48px ${disp}`; ctx.fillStyle = col.ink; ctx.fillText("어디", 60, 100);
-  const w1 = ctx.measureText("어디").width; ctx.fillStyle = col.accent; ctx.fillText("게", 60 + w1, 100);
+  const w1 = ctx.measureText("어디").width; ctx.fillStyle = col.accent; ctx.fillText("게서", 60 + w1, 100);
   ctx.font = `500 28px ${numFont}`; ctx.fillStyle = col.muted; ctx.textAlign = "right";
   ctx.fillText(mode.name + (mode.daily ? " · " + today() : ""), CW - 60, 98);
   ctx.textAlign = "left";
@@ -486,19 +490,19 @@ async function makeImage() {
   const gp = d3.geoPath(p, ctx);
   ctx.beginPath(); viewFeatures.forEach(f => gp(f)); ctx.fillStyle = col.land; ctx.fill();
   for (const r of results) {
-    const k = bucket(r.score);
-    ctx.beginPath(); gp(r.f); ctx.fillStyle = col[k + "s"]; ctx.fill(); ctx.strokeStyle = col[k]; ctx.lineWidth = 3; ctx.stroke();
+    const c = heat(r);
+    ctx.beginPath(); gp(r.f); ctx.fillStyle = soft(c); ctx.fill(); ctx.strokeStyle = c; ctx.lineWidth = 3; ctx.stroke();
   }
   ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.globalAlpha = 0.5;
   for (const r of results) if (r.km > 0) {
     const a = p(r.guess), b = p(r.pt);
-    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = col[bucket(r.score)]; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = heat(r); ctx.stroke();
   }
   ctx.globalAlpha = 1;
   const pins = results.map(r => { const [x, y] = p(r.guess); return { x, y, r: 14 }; });
   results.forEach((r, i) => {
     ctx.beginPath(); ctx.arc(pins[i].x, pins[i].y, 10, 0, Math.PI * 2);
-    ctx.fillStyle = col[bucket(r.score)]; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = col.panel; ctx.stroke();
+    ctx.fillStyle = heat(r); ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = col.panel; ctx.stroke();
   });
   const fs = 30;
   const items = results.map(r => { const [x, y] = gp.centroid(r.f); return { x, y, w: measure(label(r.f).name, fs), r }; });
@@ -515,7 +519,7 @@ async function makeImage() {
   // footer: one square per round, then the address
   ctx.textBaseline = "middle";
   results.forEach((r, i) => {
-    ctx.fillStyle = col[bucket(r.score)];
+    ctx.fillStyle = heat(r);
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(60 + i * 52, 1242, 42, 42, 8) : ctx.rect(60 + i * 52, 1242, 42, 42); ctx.fill();
   });
   if (location.protocol.startsWith("http")) {
@@ -531,17 +535,17 @@ $("openShare").onclick = async () => {
   const img = $("shot");
   if (img.src) URL.revokeObjectURL(img.src);
   img.src = URL.createObjectURL(shotBlob);
-  const file = new File([shotBlob], "eodige.png", { type: "image/png" });
+  const file = new File([shotBlob], "eodigeseo.png", { type: "image/png" });
   $("shareImg").hidden = !(navigator.canShare && navigator.canShare({ files: [file] }));
   $("shareOv").hidden = false;
 };
 $("shareImg").onclick = async () => {
-  try { await navigator.share({ files: [new File([shotBlob], "eodige.png", { type: "image/png" })], text: shareText() }); }
+  try { await navigator.share({ files: [new File([shotBlob], "eodigeseo.png", { type: "image/png" })], text: shareText() }); }
   catch (e) { if (e.name !== "AbortError") $("toast").textContent = "공유하지 못했습니다. 이미지를 길게 눌러 저장해 주세요."; }
 };
 $("saveImg").onclick = () => {
   const a = document.createElement("a");
-  a.href = $("shot").src; a.download = `eodige-${today()}.png`;
+  a.href = $("shot").src; a.download = `eodigeseo-${today()}.png`;
   document.body.append(a); a.click(); a.remove();
   $("toast").textContent = "저장이 안 되면 이미지를 길게 누르거나 우클릭해서 저장하세요.";
 };
@@ -569,6 +573,10 @@ function goHome() {
 }
 
 new ResizeObserver(layout).observe(wrap);
+// the miss colors are computed from theme tokens, so repaint when the theme flips
+const repaint = () => { paintRegions(); renderPips(); drawMarks(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", repaint);
+new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 layout(); renderModes(); resetTop();
 </script>
 
