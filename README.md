@@ -32,3 +32,5 @@ npx mapshaper tagged.json -dissolve key copy-fields=sido,name name=sgg \
 ## 링크 미리보기
 
 `og.png`(1200×630)가 링크를 공유할 때 뜨는 미리보기 이미지입니다. 미리보기 문구와 주소는 `src/build.js`의 `SITE`, `DESC`에서 바꿉니다.
+
+결과를 텍스트로 공유하면 `r/<점수>/` 주소가 붙습니다. 이 페이지는 미리보기에 그 점수를 보여주고, 열면 게임으로 넘어갑니다. `og.png`와 `r/` 폴더는 `node src/make-og.js`로 다시 만듭니다(playwright, d3, topojson-client, @fontsource 글꼴 필요).

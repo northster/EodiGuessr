@@ -468,8 +468,10 @@ $("shareClose").onclick = () => { $("shareOv").hidden = true; };
 
 // ---------- share image ----------
 let shotBlob = null;
+// r/<score>/ is a tiny page whose link preview shows the score; opening it goes to the game
+const scoreLink = () => location.href.split(/[?#]/)[0].replace(/index\.html$/, "") + `r/${total()}/`;
 const shareText = () => `EodiGuessr · ${mode.name}${mode.daily ? " " + today() : ""}\n${total()}/100 · 총 오차 ${fmtSum()}\n` +
-  results.map(emoji).join("") + (location.protocol.startsWith("http") ? "\n" + location.href.split("#")[0] : "");
+  results.map(emoji).join("") + (location.protocol.startsWith("http") ? "\n" + scoreLink() : "");
 
 async function makeImage() {
   try { await document.fonts.ready; } catch (e) {}
